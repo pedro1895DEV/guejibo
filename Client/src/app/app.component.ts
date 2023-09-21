@@ -1,6 +1,5 @@
 import { Component } from '@angular/core';
-import { ActivatedRoute, Router } from '@angular/router';
-import { AuthService } from './auth.service';
+import { Router } from '@angular/router';
 
 @Component({
   selector: 'app-root',
@@ -9,23 +8,10 @@ import { AuthService } from './auth.service';
 })
 export class AppComponent {
   title = 'Client';
-  user = { name: '' };
-  loggedIn = false;
 
-  constructor(private route: ActivatedRoute, private router: Router, public authService: AuthService) { }
-
-  ngOnInit() {
-    this.route.queryParams.subscribe(params => {
-      let token = params['token'];
-      let user = params['user'];
-
-      if (token && user) {
-        this.authService.setUser({ name: user });
-        this.authService.setupUserWithToken(token);
-        this.loggedIn = true;
-      }
-    });
-  }
+  constructor(
+    private router: Router
+  ) { }
 
   showLogo(): boolean {
     return this.router.url != '/';

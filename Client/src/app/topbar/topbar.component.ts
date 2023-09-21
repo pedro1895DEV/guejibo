@@ -1,5 +1,5 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { AuthService, User } from '../auth.service';
+import { AuthService } from '../auth.service';
 
 @Component({
   selector: 'app-topbar',
@@ -9,9 +9,10 @@ import { AuthService, User } from '../auth.service';
 export class TopbarComponent implements OnInit {
 
   @Input() showLogo: boolean = true;
-  loggedIn: boolean = null;
-  user: User;
-
+  title = 'Client';
+  user = { name: '' };
+  loggedIn = false;
+  
   testMessage:string = 'yalala';
 
   constructor(

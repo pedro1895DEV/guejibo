@@ -1,10 +1,11 @@
 const models = require('../sequelize/models');
 const authlogic = require('../app/authlogic');
 const User = models.User;
-const session = require('express-session');
 require('dotenv').config();
+const cookieParser = require('cookie-parser');
 
 module.exports = function (app, passport) {
+    app.use(cookieParser());
 
     /*
      * Google OAuth 2.0 configurations.
@@ -48,7 +49,8 @@ module.exports = function (app, passport) {
         function (req, res) {
             const user = req.user.get();
             const token = authlogic.createJWT({ id: user.id, name: user.name, email: user.email });
-            res.redirect(`http://localhost:4200?token=${token}&user=${user.name}`);
+        res.cookie('jwt', token);
+        res.redirect(`http://localhost:4200`);
         });
 
 
