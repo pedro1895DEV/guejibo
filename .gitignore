@@ -3,3 +3,4 @@ Server/.env
 Client-Jquery/jsconfig.json
 launch.json
 dist
+Server/mariadb-data

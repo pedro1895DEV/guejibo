@@ -1,9 +1,9 @@
 {
   "development": {
-    "username": "",
-    "password": "",
-    "database": "",
-    "host": "127.0.0.1",
+    "username": "root",
+    "password": "admin",
+    "database": "guejibo",
+    "host": "db",
     "dialect": "mariadb",
     "operatorsAliases": 0
   },

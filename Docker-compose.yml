@@ -1,0 +1,50 @@
+version: '3.1'
+services:
+  db:
+    image: mariadb:latest
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: admin
+      MYSQL_DATABASE: guejibo
+      MYSQL_USER: root
+      MYSQL_PASSWORD: admin
+    volumes:
+      - ./Server/mariadb-data:/var/lib/mysql
+    ports:
+      - 3306:3306
+    healthcheck:
+      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+
+  app:
+    build:
+      context: ./Server
+      dockerfile: Dockerfile
+    volumes:
+      - ./Server:/usr/src/Server
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - 3000:3000
+
+  client:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    ports:
+      - 4200:4200
+    volumes:
+      - ./Client:/usr/src/app
+
+  apache:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    volumes:
+      - ./Games:/usr/local/apache2/htdocs/Games/
+      - ./GamesLib:/usr/local/apache2/htdocs/GamesLib/
+    ports:
+        - 80:80

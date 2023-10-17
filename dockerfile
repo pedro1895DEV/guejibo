@@ -1,5 +1,5 @@
-# Utiliza a imagem oficial do Apache na versão 2.4
-FROM httpd:2.4
+# Utiliza a imagem oficial do Apache na versão mais recente
+FROM httpd:latest
 
 # Faz a cópia dos arquivos localizados no diretório Games e GamesLib
 COPY ./Games/ /usr/local/apache2/htdocs/Games/
