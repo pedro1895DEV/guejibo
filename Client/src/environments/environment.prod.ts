@@ -1,7 +1,7 @@
 export const environment = {
   production: true,
 
-  apiUrl: "https://guejibo.herokuapp.com/",
-  wsUrl: 'wss://guejibo.herokuapp.com/',
-  gamesPath: 'http://www.guejibo.com/games/'
+  apiUrl: "https://guejibo-api.onrender.com/",
+  wsUrl: 'ws://guejibo-api.onrender.com/',
+  gamesPath: 'https://guejibo-apache.onrender.com/games/'
 };
