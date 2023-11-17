@@ -1,5 +1,5 @@
 # Utiliza a imagem oficial do Node.js
-FROM node:18
+FROM node:lts-alpine
 
 WORKDIR /usr/src/app
 
