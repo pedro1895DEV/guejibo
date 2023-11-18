@@ -11,8 +11,8 @@ COPY . .
 
 ENV NODE_OPTIONS="--openssl-legacy-provider"
 
-# RUN npm run build
+RUN npx ng build --prod
 
 EXPOSE 4200
 
-CMD ["npx", "ng", "serve", "--host", "0.0.0.0", "--poll=500"]
+CMD ["npx", "http-server", "dist/"]

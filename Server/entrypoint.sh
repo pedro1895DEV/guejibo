@@ -3,11 +3,14 @@
 # Muda para o diretório do Sequelize
 cd /usr/src/Server/sequelize/
 
-# Executa as migrações do banco de dados
-npx sequelize-cli db:migrate
+# Aguarda até que o banco de dados esteja pronto
+until npx sequelize-cli db:migrate; do
+  echo "Banco de dados não está pronto, esperando..."
+  sleep 1
+done
 
 # Muda para o diretório de iniciação do Servidor Node
 cd /usr/src/Server/
 
 # Inicia o Servidor
-nodemon -L index.js
+node index.js
