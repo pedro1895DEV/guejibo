@@ -9,6 +9,9 @@ until npx sequelize-cli db:migrate; do
   sleep 1
 done
 
+# Executa os seeders (popula tabela Game, etc.)
+npx sequelize-cli db:seed:all
+
 # Muda para o diretório de iniciação do Servidor Node
 cd /usr/src/Server/
 

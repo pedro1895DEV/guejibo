@@ -1,5 +1,35 @@
 # Como instalar e configurar o servidor
 
+## Opção 1: Via Docker (Recomendado)
+
+1. Instalar o [Docker Desktop](https://www.docker.com/products/docker-desktop/), caso já não esteja instalado.
+
+2. Na raiz do projeto, criar o arquivo `Server/.env` com base no template `Server/.env.example`:
+
+    ```
+    cp Server/.env.example Server/.env
+    ```
+
+    Editar o `.env` e preencher pelo menos o `JWT_SECRET` com uma string aleatória.
+
+3. Na raiz do projeto, executar:
+
+    ```
+    docker compose up
+    ```
+
+4. O Docker irá:
+   - Subir o banco de dados MariaDB e aguardar até que esteja saudável
+   - Executar as migrações do Sequelize automaticamente
+   - Popular a tabela `Game` com os jogos disponíveis (seeder automático)
+   - Iniciar o servidor Node.js na porta `3000`
+
+5. Se tudo estiver certo, o endereço `http://localhost:3000/api/games` deve retornar um JSON com os jogos cadastrados.
+
+---
+
+## Opção 2: Sem Docker (Manual)
+
 1. Instalar o [Node.js](https://nodejs.org/) , caso já não esteja instalado
 
 2. Instalar o [MariaDB](https://mariadb.org/), caso já não esteja instalado
@@ -10,7 +40,7 @@
     npm install
     ```
 
-4. Configurar o objeto associado a `development` no arquivo `sequelize/config/config.json` com as informações de conexão do banco de dados (deve ser inserido um usuário e senha que tenham permissões de leitura e escrita em um banco de dados vazio já existente).
+4. Criar um arquivo chamado `.env` na pasta `Server/` com base no template `.env.example`. Preencher as variáveis de conexão com o banco de dados e o `JWT_SECRET`.
 
 5. Utilizar a migração automática do Sequelize para criar as tabelas do banco de dados:
 
@@ -19,29 +49,18 @@
     npx sequelize-cli db:migrate
     ```
 
-    Se tudo der certo, o banco de dados informado no passo anterior agora deve conter as tabelas `Game`, `GameRoom`, `SequelizeMeta`, `User` e `UsersGameRooms`.
+    Se tudo der certo, o banco de dados agora deve conter as tabelas `Game`, `GameRoom`, `SequelizeMeta`, `User` e `UsersGameRooms`.
 
-6. A tabela `Game` contém informação sobre os jogos existentes no sistema. O campo `basePath` deve conter o nome da pasta (dentro de `Games/`) onde os arquivos do jogo se encontram no sistema de arquivos. 
-
-    No banco de dados, inserir nessa tabela os dados dos jogos configurados. Por exemplo:
-
-    ```sql
-    INSERT INTO Game (name, basePath, createdAt, updatedAt) 
-    VALUES  ('Jogo da Nave', 'Nave', NOW(), NOW());
-    ```
-    
-7. Criar um arquivo chamado `.env` na pasta `Server/` com o conteúdo:
+6. Popular a tabela `Game` com os jogos disponíveis:
 
     ```
-    JWT_SECRET=XXX
+    npx sequelize-cli db:seed:all
     ```
-    
-    Onde `XXX` é uma string aleatória (que será usada como chave para a geração e verificação dos tokens JWT).
 
-8. Para iniciar o servidor, basta executar (na pasta `Server/`), o comando:
+7. Para iniciar o servidor, executar (na pasta `Server/`):
 
     ```
     node index.js
     ```
 
-9. Se tudo estiver certo, enquanto o servidor estiver em execução, o endereço `http://localhost:3000/api/games` deve retornar um objeto JSON com os itens inseridos na tabela `Game`
+8. Se tudo estiver certo, o endereço `http://localhost:3000/api/games` deve retornar um JSON com os jogos cadastrados.
