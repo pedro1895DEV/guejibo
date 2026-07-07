@@ -116,7 +116,7 @@ export class GameConnection {
      */
     public loadJoinPage() {
         Cookies.set('tmpuser', JSON.stringify(this.endGameData.user), { path: '/' });
-        window.open('../../Client-Jquery/completereg.html', '_self');
+        window.open('../../register', '_self');
     }
 
 }

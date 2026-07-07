@@ -1,5 +1,5 @@
 const LocalStrategy = require("passport-local").Strategy;
-const bcrypt = require('bcrypt-nodejs');
+const bcrypt = require('bcryptjs');
 const models = require('../sequelize/models');
 const User = models.User;
 
@@ -46,19 +46,21 @@ module.exports = function (passport) {
       .then(
         existingUser => {
           if (existingUser === null) {
-            return done(null, false);
+            return returnFunction(false);
           }
           else {
             existingUser.name = req.body.name;
             existingUser.email = email;
-            existingUser.password = bcrypt.hashSync(password, null, null);
+            existingUser.password = bcrypt.hashSync(password, 10);
             existingUser.temporary = false;
 
             existingUser.save()
-              .then(returnFunction);
+              .then(returnFunction)
+              .catch(() => returnFunction(false));
           }
         }
-      );
+      )
+      .catch(() => returnFunction(false));
   }
 
   function registerNewUser(req, email, password, returnFunction) {
@@ -70,7 +72,7 @@ module.exports = function (passport) {
               {
                 name: req.body.name,
                 email: email,
-                password: bcrypt.hashSync(password, null, null)
+                password: bcrypt.hashSync(password, 10)
               }
             )
               .then(returnFunction);

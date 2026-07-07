@@ -2,9 +2,6 @@
 
 module.exports = (sequelize, DataTypes) => {
 
-  const Game = require('./game')(sequelize, DataTypes);
-  const User = require('./user')(sequelize, DataTypes);
-
   const GameRoom = sequelize.define('GameRoom',
     {
       gameId: DataTypes.INTEGER,
@@ -31,6 +28,8 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   GameRoom.exportObject = (gr, fulllist = false) => {
+    const { Game, User } = sequelize.models;
+
     let obj = {
       id: gr.id,
       code: gr.code,
@@ -46,7 +45,7 @@ module.exports = (sequelize, DataTypes) => {
     }
 
     if (gr.hasOwnProperty('owner')) {
-      obj.owner = Game.exportObject(gr.owner);
+      obj.owner = User.exportObject(gr.owner);
     }
     else {
       obj.ownerId = gr.ownerId;

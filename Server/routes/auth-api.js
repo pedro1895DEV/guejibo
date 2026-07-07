@@ -7,6 +7,14 @@ const cookieParser = require('cookie-parser');
 module.exports = function (app, passport) {
     app.use(cookieParser());
 
+    // Resolve base URLs for OAuth redirects
+    const isProduction = process.env.NODE_ENV === 'production';
+    if (isProduction && (!process.env.API_URL || !process.env.CLIENT_URL)) {
+        throw new Error('API_URL and CLIENT_URL env vars are required in production');
+    }
+    const API_URL = process.env.API_URL || 'http://localhost:3000';
+    const CLIENT_URL = process.env.CLIENT_URL || 'http://localhost:4200';
+
     /*
      * Google OAuth 2.0 configurations.
      */
@@ -16,7 +24,7 @@ module.exports = function (app, passport) {
     passport.use(new GoogleStrategy({
         clientID: process.env.GOOGLE_CLIENT_ID,
         clientSecret: process.env.GOOGLE_CLIENT_SECRET,
-        callbackURL: "http://localhost:3000/auth/google/callback"
+        callbackURL: API_URL + '/auth/google/callback'
     },
         function (accessToken, refreshToken, profile, cb) {
             let userEmail = profile.emails && profile.emails[0] ? profile.emails[0].value : null;
@@ -50,7 +58,7 @@ module.exports = function (app, passport) {
             const user = req.user.get();
             const token = authlogic.createJWT({ id: user.id, name: user.name, email: user.email });
         res.cookie('jwt', token);
-        res.redirect(`http://localhost:4200`);
+        res.redirect(CLIENT_URL);
         });
 
 

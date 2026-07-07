@@ -2,20 +2,27 @@
 
 module.exports = {
   up: (queryInterface, Sequelize) => {
-    return queryInterface.addColumn(
-      'User',
-      'googleId',
-      {
-        type: Sequelize.STRING,
-        allowNull: true,
-      }
-    );
+    return Promise.all([
+      queryInterface.addConstraint('User', {
+        fields: ['email'],
+        type: 'unique',
+        name: 'unique_email'
+      }),
+      queryInterface.addColumn(
+        'User',
+        'googleId',
+        {
+          type: Sequelize.STRING,
+          allowNull: true,
+        }
+      )
+    ]);
   },
 
   down: (queryInterface, Sequelize) => {
-    return queryInterface.removeColumn(
-      'User',
-      'googleId'
-    );
+    return Promise.all([
+      queryInterface.removeConstraint('User', 'unique_email'),
+      queryInterface.removeColumn('User', 'googleId')
+    ]);
   }
 };

@@ -9,8 +9,7 @@ module.exports = merge(common, {
     mode: 'production',
     plugins: [
         new webpack.DefinePlugin({
-            WSURL: "'wss://guejibo-api.onrender.com/'"
-            //WSURL: "'ws://localhost:3000/'"
+            WSURL: "(window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/'"
         })
     ]
 });

@@ -47,24 +47,11 @@ function server(cb) {
   src('Server/**/*')
     .pipe(dest('dist/'));
 
-  const envContents =
-    'NODE_ENV=production\n' +
-    'JWT_SECRET=' + createRandomKey();
+  // JWT_SECRET must be set as a constant environment variable in the
+  // deployment platform (e.g. Heroku config vars, Docker env, etc.)
+  // to avoid invalidating active sessions on every build.
+  const envContents = 'NODE_ENV=production\n';
   fs.writeFile('dist/.env', envContents, cb);
-
-  //
-  function createRandomKey() {
-    let result = new Array(120);
-    let characters =
-      'ABCDEFGHIJKLMNOPQRSTUVWXYZ' +
-      'abcdefghijklmnopqrstuvwxyz' +
-      '"\'!@#$%*()_-+=`{[^~}]<,>.:;?/\\|' +
-      '0123456789';
-    for (let i = 0; i < 120; i++) {
-      result[i] = characters.charAt(Math.floor(Math.random() * characters.length));
-    }
-    return result.join('');
-  }
 }
 
 /*
@@ -103,12 +90,6 @@ function gameslib(cb) {
     }
   );
   src('GamesLib/dist/gameslib.min.js')
-    .pipe(
-      replace(
-        'ws://localhost:8080/',
-        'ws://localhost:3000/'
-      )
-    )
     .pipe(dest('dist/games'));
   cb();
 }

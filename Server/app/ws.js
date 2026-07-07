@@ -13,32 +13,31 @@ const UsersGameRooms = models.UsersGameRooms;
 
 module.exports = function (app, httpServer, passport) {
 
-    //Stores the user that is currently connected on the web socket
-    let currentUser = null;
-
     //Web socket server for this connection
     const wss = new WebSocket.Server({
         server: httpServer,
         verifyClient: async (info, done) => {
             const token = info.req.url.split('/')[1];
 
-            //Unregisterd user
+            let authenticatedUser = null;
+
+            //Unregistered user
             if (token.startsWith('unregistered_')) {
                 let name = base64url.decode(token.substr(13));
                 if (name === '') {
                     name = gamelogic.createRandomUserName();
                 }
 
-                currentUser = User.build(
+                authenticatedUser = User.build(
                     {
                         name: name,
                         temporary: true
                     }
                 );
-                await currentUser.save();
+                await authenticatedUser.save();
             }
 
-            //Registered user
+            //Registered user — validate JWT and look up the user
             else {
                 let decoded;
                 try {
@@ -49,19 +48,68 @@ module.exports = function (app, httpServer, passport) {
                     return;
                 }
 
-                currentUser = await User.findOne({ where: { id: decoded.id } });
+                authenticatedUser = await User.findOne({ where: { id: decoded.id } });
             }
 
+            // Reject connection if the user could not be resolved
+            if (!authenticatedUser) {
+                done(false);
+                return;
+            }
+
+            // Attach the verified user to the request so it can be read
+            // in the 'connection' handler without a shared closure variable.
+            info.req.authenticatedUser = authenticatedUser;
             done(true);
         }
     });
 
-    //Dictionary of web socket servers indexed by user id
+    //Dictionary of Sets of web sockets indexed by user id
     let webSocketsById = {};
 
-    wss.on('connection', ws => {
-        webSocketsById[currentUser.id] = ws;
+    /**
+     * Sends a JSON-stringified payload to all active connections of a user.
+     * Silently skips users with no active connections.
+     */
+    function sendToUser(userId, payload) {
+        const sockets = webSocketsById[userId];
+        if (!sockets) return;
+
+        const message = typeof payload === 'string' ? payload : JSON.stringify(payload);
+        for (const socket of sockets) {
+            if (socket.readyState === WebSocket.OPEN) {
+                socket.send(message);
+            }
+        }
+    }
+
+    wss.on('connection', (ws, req) => {
+        const currentUser = req.authenticatedUser;
+        const userId = currentUser.id;
+
+        // Store connection in a Set to support multiple tabs/devices
+        if (!webSocketsById[userId]) {
+            webSocketsById[userId] = new Set();
+        }
+        webSocketsById[userId].add(ws);
         ws.user = currentUser;
+
+        // Clean up on close to prevent memory leak
+        ws.on('close', () => {
+            const sockets = webSocketsById[userId];
+            if (sockets) {
+                sockets.delete(ws);
+                if (sockets.size === 0) {
+                    delete webSocketsById[userId];
+                }
+            }
+        });
+
+        // Handle errors without crashing the process
+        ws.on('error', (err) => {
+            console.error(`WebSocket error for user ${userId}:`, err.message);
+            ws.terminate();
+        });
 
         ws.on('message', message => {
             let data;
@@ -136,24 +184,39 @@ module.exports = function (app, httpServer, passport) {
             ]
         })
             .then(gr => {
-                gr.addMember(currentUser.get().id).then(() => {
-                    ws.send(JSON.stringify(
-                        {
-                            responseTo: 'join',
-                            success: true,
-                            gameroom: GameRoom.exportObject(gr, true)
-                        }
-                    ));
-                });
-            })
-            .catch(e => {
-                ws.send(JSON.stringify(
-                    {
+                if (gr === null) {
+                    ws.send(JSON.stringify({
                         responseTo: 'join',
                         success: false,
                         error: 'Game room not found'
-                    }
-                ));
+                    }));
+                    return;
+                }
+
+                gr.addMember(ws.user.get().id)
+                    .then(() => {
+                        ws.send(JSON.stringify({
+                            responseTo: 'join',
+                            success: true,
+                            gameroom: GameRoom.exportObject(gr, true)
+                        }));
+                    })
+                    .catch(e => {
+                        console.error('WS doActionJoin addMember error:', e.message);
+                        ws.send(JSON.stringify({
+                            responseTo: 'join',
+                            success: false,
+                            error: 'Failed to join game room'
+                        }));
+                    });
+            })
+            .catch(e => {
+                console.error('WS doActionJoin error:', e.message);
+                ws.send(JSON.stringify({
+                    responseTo: 'join',
+                    success: false,
+                    error: 'Game room not found'
+                }));
             });
     }
 
@@ -183,15 +246,18 @@ module.exports = function (app, httpServer, passport) {
                 let sendToList = gr.members.map(m => m.id).filter(id => id != ws.user.id);
                 sendToList.push(gr.ownerId);
 
+                const payload = {
+                    req: 'player-is-ready',
+                    user: User.exportObject(ws.user),
+                    gameroom: data.gameroom
+                };
+
                 for (let id of sendToList) {
-                    webSocketsById[id].send(JSON.stringify(
-                        {
-                            req: 'player-is-ready',
-                            user: User.exportObject(ws.user),
-                            gameroom: data.gameroom
-                        }
-                    ));
+                    sendToUser(id, payload);
                 }
+            })
+            .catch(e => {
+                console.error('WS doActionImReady error:', e.message);
             });
     }
 
@@ -219,25 +285,31 @@ module.exports = function (app, httpServer, passport) {
             ]
         })
             .then(gr => {
-                gr.timeStarted = toMysqlFormat(new Date());
-                gr.save().then(result => {
-                    let sendToList = gr.members.filter(m => m.id != ws.user.id);
-                    sendToList.push(gr.owner);
+                if (gr === null) return;
 
-                    for (let user of sendToList) {
-                        webSocketsById[user.id].send(JSON.stringify(
-                            {
+                gr.timeStarted = toMysqlFormat(new Date());
+                gr.save()
+                    .then(result => {
+                        let sendToList = gr.members.filter(m => m.id != ws.user.id);
+                        sendToList.push(gr.owner);
+
+                        for (let user of sendToList) {
+                            sendToUser(user.id, {
                                 req: 'game-started',
                                 gameroom: data.gameroom,
                                 startTime: gr.timeStarted,
                                 path: gr.game.basePath,
                                 token: authlogic.createJWT(user)
-                            }
-                        ));
-                    }
-                });
+                            });
+                        }
+                    })
+                    .catch(e => {
+                        console.error('WS doActionStartGame save error:', e.message);
+                    });
+            })
+            .catch(e => {
+                console.error('WS doActionStartGame error:', e.message);
             });
-
     }
 
 
@@ -261,20 +333,19 @@ module.exports = function (app, httpServer, passport) {
             }
         })
             .then(gr => {
+                if (gr === null) return;
 
                 //Send new score to the game room owner
-                webSocketsById[gr.ownerId].send(JSON.stringify(
-                    {
-                        req: 'update-score',
-                        user: ws.user.id,
-                        gameroom: data.gameroom,
-                        score: data.score,
-                        endgame: data.endgame
-                    }
-                ));
+                sendToUser(gr.ownerId, {
+                    req: 'update-score',
+                    user: ws.user.id,
+                    gameroom: data.gameroom,
+                    score: data.score,
+                    endgame: data.endgame
+                });
 
                 //Update database with new score and endgame status
-                UsersGameRooms.update(
+                return UsersGameRooms.update(
                     {
                         score: data.score,
                         ended: data.endgame
@@ -292,17 +363,15 @@ module.exports = function (app, httpServer, passport) {
                         if (data.endgame) {          
 
                             //... send a confirmation message ...
-                            webSocketsById[ws.user.id].send(JSON.stringify(
-                                {
-                                    req: 'user-game-over',
-                                    user: User.exportObject(ws.user),
-                                    gameroom: data.gameroom,
-                                    score: data.score
-                                }
-                            ));                            
+                            sendToUser(ws.user.id, {
+                                req: 'user-game-over',
+                                user: User.exportObject(ws.user),
+                                gameroom: data.gameroom,
+                                score: data.score
+                            });                            
                             
                             //... and check if the game is also over for everybody else
-                            UsersGameRooms.findAndCountAll({
+                            return UsersGameRooms.findAndCountAll({
                                 where: {
                                     gameRoomId: data.gameroom,
                                     ended: false
@@ -314,8 +383,10 @@ module.exports = function (app, httpServer, passport) {
                                     }
                                 });
                         }
-
                     });
+            })
+            .catch(e => {
+                console.error('WS doActionUpdateScore error:', e.message);
             });
     }
 
@@ -328,12 +399,16 @@ module.exports = function (app, httpServer, passport) {
             { where: { gameRoomId: data.gameroom } }
         )
             .then(n => {
-                GameRoom.findOne(
+                return GameRoom.findOne(
                     { where: { id: data.gameroom } }
                 )
                     .then(gr => {
+                        if (gr === null) return;
                         wrapUpGameRoom(gr);
                     });
+            })
+            .catch(e => {
+                console.error('WS doActionEndGame error:', e.message);
             });
     }
 
@@ -343,14 +418,16 @@ module.exports = function (app, httpServer, passport) {
      */
     function wrapUpGameRoom(gr) {
         gr.timeEnded = toMysqlFormat(new Date());
-        gr.save().then(result => {
-            webSocketsById[gr.ownerId].send(JSON.stringify(
-                {
+        gr.save()
+            .then(result => {
+                sendToUser(gr.ownerId, {
                     req: 'game-over',
                     gameroom: gr.id,
                     endTime: gr.timeEnded
-                }
-            ));
-        });
+                });
+            })
+            .catch(e => {
+                console.error('WS wrapUpGameRoom error:', e.message);
+            });
     }
 };
