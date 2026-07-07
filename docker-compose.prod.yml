@@ -1,0 +1,60 @@
+# Docker Compose - Production Environment
+# Usage: docker compose -f docker-compose.prod.yml up --build
+#
+# Required environment variables (set in .env or export before running):
+#   MYSQL_ROOT_PASSWORD, MYSQL_DATABASE
+#   SESSION_SECRET, JWT_SECRET
+#   API_URL, CLIENT_URL, CORS_ORIGIN
+#   DB_HOST=db, DB_NAME, DB_USER=root, DB_PASS
+
+services:
+  db:
+    image: mariadb:11.4
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD}
+      MYSQL_DATABASE: ${MYSQL_DATABASE}
+    volumes:
+      - mariadb_data:/var/lib/mysql
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+  app:
+    build:
+      context: ./Server
+      dockerfile: Dockerfile
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      DB_HOST: db
+      DB_PORT: 3306
+      DB_NAME: ${MYSQL_DATABASE}
+      DB_USER: root
+      DB_PASS: ${MYSQL_ROOT_PASSWORD}
+      JWT_SECRET: ${JWT_SECRET}
+      SESSION_SECRET: ${SESSION_SECRET}
+      CORS_ORIGIN: ${CORS_ORIGIN}
+      API_URL: ${API_URL}
+      CLIENT_URL: ${CLIENT_URL}
+      GOOGLE_CLIENT_ID: ${GOOGLE_CLIENT_ID}
+      GOOGLE_CLIENT_SECRET: ${GOOGLE_CLIENT_SECRET}
+    depends_on:
+      db:
+        condition: service_healthy
+
+  apache:
+    build:
+      context: .
+      dockerfile: dockerfile
+    ports:
+      - "80:80"
+    depends_on:
+      - app
+
+volumes:
+  mariadb_data:

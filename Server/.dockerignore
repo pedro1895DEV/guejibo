@@ -1,0 +1,13 @@
+# Dependencies (installed inside container)
+node_modules/
+
+# Database data (never belongs in the image)
+mariadb-data/
+
+# Environment files (secrets must come from env vars)
+.env
+
+# IDE and editor files
+.vscode/
+*.swp
+*.swo

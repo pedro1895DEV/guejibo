@@ -1,9 +1,25 @@
-# Utiliza a imagem oficial do Apache na versão mais recente
-FROM httpd:latest
+# Stage 1: Build the Angular client
+FROM node:18-alpine AS client-build
 
-# Faz a cópia dos arquivos localizados no diretório Games e GamesLib
-COPY ./Games/ /usr/local/apache2/htdocs/Games/
-COPY ./GamesLib/ /usr/local/apache2/htdocs/GamesLib/
+WORKDIR /usr/src/app
 
-# Faz a cópia do arquivo de configuração do servidor Apache
-COPY ./httpd.conf /usr/local/apache2/conf/httpd.conf
+COPY Client/package.json Client/package-lock.json ./
+RUN npm ci
+
+COPY Client/ .
+
+ENV NODE_OPTIONS="--openssl-legacy-provider"
+RUN npx ng build --prod --output-path=dist
+
+# Stage 2: Serve with Apache
+FROM httpd:2.4-alpine
+
+# Copy the compiled Angular app
+COPY --from=client-build /usr/src/app/dist/ /usr/local/apache2/htdocs/
+
+# Copy game files
+COPY Games/ /usr/local/apache2/htdocs/Games/
+COPY GamesLib/dist/ /usr/local/apache2/htdocs/GamesLib/
+
+# Copy Apache configuration
+COPY httpd.conf /usr/local/apache2/conf/httpd.conf

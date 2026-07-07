@@ -1,43 +1,40 @@
-version: '3.1'
+# Docker Compose - Development Environment
+# Usage: docker compose up
+#
+# For production, use: docker compose -f docker-compose.prod.yml up
+
 services:
   db:
-    image: mariadb:latest
-    restart: always
+    image: mariadb:11.4
+    restart: unless-stopped
     environment:
-      MYSQL_ROOT_PASSWORD: admin
-      MYSQL_DATABASE: guejibo
-      MYSQL_USER: root
-      MYSQL_PASSWORD: admin
+      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-admin}
+      MYSQL_DATABASE: ${MYSQL_DATABASE:-guejibo}
     volumes:
-      - ./Server/mariadb-data:/var/lib/mysql
+      - mariadb_data:/var/lib/mysql
     ports:
-      - 3306:3306
+      - "3306:3306"
     healthcheck:
-      test: ["CMD", "mysqladmin" ,"ping", "-h", "localhost"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
+      test: ["CMD", "healthcheck.sh", "--connect", "--innodb_initialized"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 90s
 
   app:
     build:
       context: ./Server
       dockerfile: Dockerfile
     ports:
-      - 3000:3000
-
-  client:
-    build:
-      context: ./Client
-      dockerfile: Dockerfile
-    ports:
-      - 4200:4200
-
-  apache:
-    build:
-      context: .
-      dockerfile: Dockerfile
+      - "3000:3000"
+    env_file:
+      - ./Server/.env
     volumes:
-      - ./Games:/usr/local/apache2/htdocs/Games/
-      - ./GamesLib:/usr/local/apache2/htdocs/GamesLib/
-    ports:
-        - 80:80
+      - ./Games:/usr/src/Games
+      - ./GamesLib:/usr/src/GamesLib
+    depends_on:
+      db:
+        condition: service_healthy
+
+volumes:
+  mariadb_data:

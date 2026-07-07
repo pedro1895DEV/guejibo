@@ -1,0 +1,29 @@
+# Dependencies
+node_modules/
+*/node_modules/
+
+# Build artifacts
+dist/
+Client/dist/
+GamesLib/dist/
+
+# Version control
+.git/
+.gitignore
+
+# Database data
+Server/mariadb-data/
+
+# IDE and editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Documentation and audit files
+*.md
+!README.md
+
+# Misc
+.agents/
+Client-Jquery/
