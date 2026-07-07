@@ -17,6 +17,13 @@ export class GameConnection {
     private endGameData: GameConnection.EndGameData;
     private queuedMessageCallbacks: (() => void)[] = [];
 
+    /** Reconnection state */
+    private intentionalClose = false;
+    private retryDelay = 1000;
+    private static readonly MAX_RETRY_DELAY = 30000;
+    private static readonly BACKOFF_MULTIPLIER = 2;
+    private reconnectTimer: number = null;
+
     /**
      * Creates a GameConnection object from data stored in cookies.
      */
@@ -28,6 +35,7 @@ export class GameConnection {
 
     /**
      * Creates a connection to the web socket server.
+     * Automatically reconnects with exponential backoff on failure.
      */
     private connect() {
         if (
@@ -41,6 +49,8 @@ export class GameConnection {
         (<GameConnection.MyWebSocket>this.ws).gameConnection = this;
         this.ws.onmessage = onmessage;
         this.ws.onopen = () => {
+            this.retryDelay = 1000;
+
             this.intervalId = window.setInterval(() => {
                 this.ws.send(JSON.stringify(
                     {
@@ -55,6 +65,50 @@ export class GameConnection {
             }
             this.queuedMessageCallbacks = [];
         };
+        this.ws.onclose = () => {
+            window.clearInterval(this.intervalId);
+            this.scheduleReconnect();
+        };
+        this.ws.onerror = () => {
+            window.clearInterval(this.intervalId);
+            this.ws.close();
+        };
+    }
+
+    /**
+     * Schedules a reconnection attempt with exponential backoff.
+     */
+    private scheduleReconnect() {
+        if (this.intentionalClose) return;
+
+        if (this.reconnectTimer !== null) return;
+
+        this.reconnectTimer = window.setTimeout(() => {
+            this.reconnectTimer = null;
+            this.ws = undefined;
+            this.connect();
+        }, this.retryDelay);
+
+        this.retryDelay = Math.min(
+            this.retryDelay * GameConnection.BACKOFF_MULTIPLIER,
+            GameConnection.MAX_RETRY_DELAY
+        );
+    }
+
+    /**
+     * Intentionally disconnects the WebSocket (no auto-reconnect).
+     */
+    public disconnect() {
+        this.intentionalClose = true;
+        window.clearInterval(this.intervalId);
+        if (this.reconnectTimer !== null) {
+            window.clearTimeout(this.reconnectTimer);
+            this.reconnectTimer = null;
+        }
+        if (this.ws) {
+            this.ws.close();
+            this.ws = undefined;
+        }
     }
 
 
