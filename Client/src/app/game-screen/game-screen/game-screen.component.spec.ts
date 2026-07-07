@@ -8,8 +8,8 @@ describe('GameRoomComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ GameScreenComponent ]
-    })
+    imports: [GameScreenComponent]
+})
     .compileComponents();
   }));
 

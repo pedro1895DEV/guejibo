@@ -3,9 +3,9 @@ import { AuthService } from 'src/app/auth.service';
 import { Router } from '@angular/router';
 
 @Component({
-  selector: 'auth-logout',
-  templateUrl: './logout.component.html',
-  styleUrls: ['./logout.component.scss']
+    selector: 'auth-logout',
+    templateUrl: './logout.component.html',
+    styleUrls: ['./logout.component.scss']
 })
 export class LogoutComponent implements OnInit {
 
@@ -20,3 +20,4 @@ export class LogoutComponent implements OnInit {
   }
 
 }
+

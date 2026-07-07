@@ -3,9 +3,9 @@ import { Game } from 'src/app/games.service';
 import { GameMetadataService } from 'src/app/game-metadata.service';
 
 @Component({
-  selector: 'gs-screenshot',
-  templateUrl: './screenshot.component.html',
-  styleUrls: ['./screenshot.component.scss']
+    selector: 'gs-screenshot',
+    templateUrl: './screenshot.component.html',
+    styleUrls: ['./screenshot.component.scss']
 })
 export class ScreenshotComponent implements OnInit {
 
@@ -23,3 +23,4 @@ export class ScreenshotComponent implements OnInit {
   }
 
 }
+

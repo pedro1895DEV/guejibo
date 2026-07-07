@@ -8,8 +8,8 @@ describe('JoinScreenComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ JoinScreenComponent ]
-    })
+    imports: [JoinScreenComponent]
+})
     .compileComponents();
   }));
 

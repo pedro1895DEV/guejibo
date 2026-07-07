@@ -6,11 +6,15 @@ import { WaitingListService } from 'src/app/waiting-list.service';
 import { environment } from 'src/environments/environment';
 import { WaitingUser } from 'src/app/new-room/waiting-user/waiting-user.component';
 import Cookies from 'js-cookie';
+import { NgIf } from '@angular/common';
+import { FormsModule } from '@angular/forms';
+import { WaitingListComponent } from '../../new-room/waiting-list/waiting-list.component';
 
 @Component({
-  selector: 'app-join-screen',
-  templateUrl: './join-screen.component.html',
-  styleUrls: ['./join-screen.component.scss']
+    selector: 'app-join-screen',
+    templateUrl: './join-screen.component.html',
+    styleUrls: ['./join-screen.component.scss'],
+    imports: [NgIf, FormsModule, WaitingListComponent]
 })
 export class JoinScreenComponent implements OnInit, OnDestroy {
 
@@ -100,6 +104,7 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
   ngOnDestroy(): void {
     this.waitingListService.cleanUp();
     this.webSocketService.removeResponseToCallback('join');
+    this.webSocketService.removeReqCallback('player-is-ready');
     this.webSocketService.removeReqCallback('game-started');
     clearInterval(this.intervalId);
   }
@@ -128,3 +133,4 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
   }
 
 }
+

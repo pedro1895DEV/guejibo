@@ -1,5 +1,6 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { State } from '../waiting-list/waiting-list.component';
+import { NgClass } from '@angular/common';
 
 export interface WaitingUser {
   name: string,
@@ -9,9 +10,10 @@ export interface WaitingUser {
 }
 
 @Component({
-  selector: 'nr-waiting-user',
-  templateUrl: './waiting-user.component.html',
-  styleUrls: ['./waiting-user.component.scss']
+    selector: 'nr-waiting-user',
+    templateUrl: './waiting-user.component.html',
+    styleUrls: ['./waiting-user.component.scss'],
+    imports: [NgClass]
 })
 export class WaitingUserComponent implements OnInit {
   @Input() user: WaitingUser;
@@ -49,3 +51,4 @@ export class WaitingUserComponent implements OnInit {
   }
 
 }
+

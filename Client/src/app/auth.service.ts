@@ -4,7 +4,7 @@ import { Observable, of } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import Cookies from 'js-cookie';
-import jwtDecode from 'jwt-decode';
+import { jwtDecode } from 'jwt-decode';
 
 export interface User {
   id: number,
@@ -116,7 +116,7 @@ export class AuthService {
    * Updates the value of loggedInUser according to the current token.
    */
   private decodeAuthToken(): void {
-    const decodedJwt = jwtDecode(this.token);
+    const decodedJwt = jwtDecode<any>(this.token);
     this.currentUser = {
       id: decodedJwt.id,
       name: decodedJwt.name,

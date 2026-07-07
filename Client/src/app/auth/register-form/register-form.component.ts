@@ -1,5 +1,7 @@
 import { Component, OnInit, Output, EventEmitter } from '@angular/core';
 import { AuthService } from 'src/app/auth.service';
+import { environment } from 'src/environments/environment';
+import { FormsModule } from '@angular/forms';
 
 interface NewUser {
   name: string,
@@ -9,9 +11,10 @@ interface NewUser {
 }
 
 @Component({
-  selector: 'auth-register-form',
-  templateUrl: './register-form.component.html',
-  styleUrls: ['./register-form.component.scss']
+    selector: 'auth-register-form',
+    templateUrl: './register-form.component.html',
+    styleUrls: ['./register-form.component.scss'],
+    imports: [FormsModule]
 })
 export class RegisterFormComponent implements OnInit {
 
@@ -48,6 +51,7 @@ export class RegisterFormComponent implements OnInit {
       });
   }
   authenticateWithGoogle() {
-    window.location.href = 'http://localhost:3000/auth/google';
+    window.location.href = environment.apiUrl + 'auth/google';
   }
 }
+

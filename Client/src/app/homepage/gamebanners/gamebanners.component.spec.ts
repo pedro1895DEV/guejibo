@@ -8,8 +8,8 @@ describe('GamebannersComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ GamebannersComponent ]
-    })
+    imports: [GamebannersComponent]
+})
     .compileComponents();
   }));
 

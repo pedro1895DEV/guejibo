@@ -1,5 +1,5 @@
 export const environment = {
-  production: true,
+  production: false,
   apiUrl: "http://localhost:3000/",
   wsUrl: 'ws://localhost:3000/',
   gamesPath: 'http://localhost:3000/games/'

@@ -8,8 +8,8 @@ describe('RegisterSuccessComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ RegisterSuccessComponent ]
-    })
+    imports: [RegisterSuccessComponent]
+})
     .compileComponents();
   }));
 

@@ -5,11 +5,15 @@ import { ActivatedRoute } from '@angular/router';
 import { AuthService } from 'src/app/auth.service';
 import { WebSocketService } from 'src/app/web-socket.service';
 import { WaitingListService } from 'src/app/waiting-list.service';
+import { NgIf } from '@angular/common';
+import { GameTitleComponent } from '../../game-screen/game-title/game-title.component';
+import { WaitingListComponent } from '../waiting-list/waiting-list.component';
 
 @Component({
-  selector: 'app-new-room',
-  templateUrl: './new-room.component.html',
-  styleUrls: ['./new-room.component.scss']
+    selector: 'app-new-room',
+    templateUrl: './new-room.component.html',
+    styleUrls: ['./new-room.component.scss'],
+    imports: [NgIf, GameTitleComponent, WaitingListComponent]
 })
 export class NewRoomComponent implements OnInit, OnDestroy {
 
@@ -31,11 +35,10 @@ export class NewRoomComponent implements OnInit, OnDestroy {
     this.route.paramMap.subscribe(
       paramMap => {
         const gameid = Number(paramMap.get('gameid'));
-        const outer = this;
         this.gameRoom$ = this.gameService.getNewGameRoom(gameid);
         this.gameRoom$.subscribe({
-          next(gr: GameRoom) {
-            outer.gameRoom = gr;
+          next: (gr: GameRoom) => {
+            this.gameRoom = gr;
 
             if (!gr.success) {
               if(isDevMode())
@@ -44,12 +47,12 @@ export class NewRoomComponent implements OnInit, OnDestroy {
             }
 
             if('token' in gr)
-              outer.authService.setupUserWithToken(gr.token);
+              this.authService.setupUserWithToken(gr.token);
               
-            outer.webSocketService.connect();
-            outer.webSocketService.registerReqCallback(
+            this.webSocketService.connect();
+            this.webSocketService.registerReqCallback(
               'player-is-ready',
-              msg => { outer.waitingListService.playerIsReady(msg.user); }
+              msg => { this.waitingListService.playerIsReady(msg.user); }
             );
           }
         });
@@ -78,3 +81,4 @@ export class NewRoomComponent implements OnInit, OnDestroy {
   }
 
 }
+

@@ -8,8 +8,8 @@ describe('WaitingUserComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ WaitingUserComponent ]
-    })
+    imports: [WaitingUserComponent]
+})
     .compileComponents();
   }));
 

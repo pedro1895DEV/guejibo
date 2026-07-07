@@ -1,11 +1,13 @@
 import { Component, OnInit, Input, isDevMode } from '@angular/core';
 import { Game } from 'src/app/games.service';
 import { GameMetadataService } from 'src/app/game-metadata.service';
+import { RouterLink } from '@angular/router';
 
 @Component({
-  selector: 'hp-gamebanner',
-  templateUrl: './gamebanner.component.html',
-  styleUrls: ['./gamebanner.component.scss']
+    selector: 'hp-gamebanner',
+    templateUrl: './gamebanner.component.html',
+    styleUrls: ['./gamebanner.component.scss'],
+    imports: [RouterLink]
 })
 export class GamebannerComponent implements OnInit {
 
@@ -25,3 +27,4 @@ export class GamebannerComponent implements OnInit {
   }
 
 }
+

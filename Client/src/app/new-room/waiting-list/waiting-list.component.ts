@@ -1,15 +1,17 @@
 import { Component, OnInit, Input, OnDestroy, Output, EventEmitter } from '@angular/core';
-import { WaitingUser } from '../waiting-user/waiting-user.component';
+import { WaitingUser, WaitingUserComponent } from '../waiting-user/waiting-user.component';
 import { WaitingListService } from 'src/app/waiting-list.service';
+import { NgClass, NgIf, NgFor } from '@angular/common';
 
 export enum State {
   Waiting, Playing
 }
 
 @Component({
-  selector: 'nr-waiting-list',
-  templateUrl: './waiting-list.component.html',
-  styleUrls: ['./waiting-list.component.scss']
+    selector: 'nr-waiting-list',
+    templateUrl: './waiting-list.component.html',
+    styleUrls: ['./waiting-list.component.scss'],
+    imports: [NgClass, NgIf, WaitingUserComponent, NgFor]
 })
 export class WaitingListComponent implements OnInit {
   public StateEnum = State;
@@ -53,3 +55,4 @@ export class WaitingListComponent implements OnInit {
   }
 
 }
+

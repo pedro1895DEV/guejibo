@@ -2,6 +2,7 @@ import { Injectable } from '@angular/core';
 import { User } from './auth.service';
 import { WaitingUser } from './new-room/waiting-user/waiting-user.component';
 import { GlobalConstants } from './common/global-constants';
+import { interval, Subscription } from 'rxjs';
 
 interface TableEntry {
   user: User,
@@ -15,7 +16,7 @@ interface TableEntry {
 export class WaitingListService {
   private outputUsers: WaitingUser[];
   private waitingTable: { [index: number]: TableEntry }
-  private intervalId;
+  private intervalSub: Subscription;
 
   constructor() {
     this.outputUsers = [];
@@ -26,10 +27,8 @@ export class WaitingListService {
    * Sets up the service. Must be called before everything else.
    */
   initialize() {
-    this.intervalId = setInterval(
-      () => { this.checkOfflineUsers(); },
-      GlobalConstants.TIMES.CHECK_PLAYERS_ONLINE_INTERVAL
-    );
+    this.intervalSub = interval(GlobalConstants.TIMES.CHECK_PLAYERS_ONLINE_INTERVAL)
+      .subscribe(() => this.checkOfflineUsers());
   }  
 
   /**
@@ -93,7 +92,9 @@ export class WaitingListService {
    * Should be called when the service is no longer needed.
    */
   cleanUp() {
-    clearInterval(this.intervalId);
+    if (this.intervalSub) {
+      this.intervalSub.unsubscribe();
+    }
     this.outputUsers = [];
     this.waitingTable = {};    
   }

@@ -8,8 +8,8 @@ describe('GameTitleComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ GameTitleComponent ]
-    })
+    imports: [GameTitleComponent]
+})
     .compileComponents();
   }));
 

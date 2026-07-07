@@ -2,11 +2,13 @@ import { Component, OnInit, Input } from '@angular/core';
 import { Game } from 'src/app/games.service';
 import { GameMetadataService } from 'src/app/game-metadata.service';
 import { Observable } from 'rxjs';
+import { AsyncPipe } from '@angular/common';
 
 @Component({
-  selector: 'gs-game-title',
-  templateUrl: './game-title.component.html',
-  styleUrls: ['./game-title.component.scss']
+    selector: 'gs-game-title',
+    templateUrl: './game-title.component.html',
+    styleUrls: ['./game-title.component.scss'],
+    imports: [AsyncPipe]
 })
 export class GameTitleComponent implements OnInit {
 
@@ -30,3 +32,4 @@ export class GameTitleComponent implements OnInit {
   }
 
 }
+

@@ -8,8 +8,8 @@ describe('ScreenshotComponent', () => {
 
   beforeEach(async(() => {
     TestBed.configureTestingModule({
-      declarations: [ ScreenshotComponent ]
-    })
+    imports: [ScreenshotComponent]
+})
     .compileComponents();
   }));
 

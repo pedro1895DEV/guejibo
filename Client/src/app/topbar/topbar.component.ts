@@ -1,10 +1,13 @@
 import { Component, OnInit, Input } from '@angular/core';
 import { AuthService } from '../auth.service';
+import { NgIf } from '@angular/common';
+import { RouterLink } from '@angular/router';
 
 @Component({
-  selector: 'app-topbar',
-  templateUrl: './topbar.component.html',
-  styleUrls: ['./topbar.component.scss']
+    selector: 'app-topbar',
+    templateUrl: './topbar.component.html',
+    styleUrls: ['./topbar.component.scss'],
+    imports: [NgIf, RouterLink]
 })
 export class TopbarComponent implements OnInit {
 
