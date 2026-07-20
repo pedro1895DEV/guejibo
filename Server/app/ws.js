@@ -4,11 +4,11 @@ const base64url = require("base64url");
 const models = require('../sequelize/models');
 const gamelogic = require('../app/gamelogic');
 const authlogic = require('../app/authlogic');
+const gameroomService = require('../services/gameroom.service');
+const scoreService = require('../services/score.service');
 
 const User = models.User;
 const GameRoom = models.GameRoom;
-const Game = models.Game;
-const UsersGameRooms = models.UsersGameRooms;
 
 
 module.exports = function (app, httpServer, passport) {
@@ -162,272 +162,161 @@ module.exports = function (app, httpServer, passport) {
     /*
      * 'join' -> Joing a game, given code.
      */
-    function doActionJoin(ws, code) {
-        GameRoom.findOne({
-            where: {
-                code: code,
-                timeStarted: null
-            },
-            include: [
-                {
-                    model: Game,
-                    as: 'game'
-                },
-                {
-                    model: User,
-                    as: 'owner'
-                },
-                {
-                    model: User,
-                    as: 'members'
-                }
-            ]
-        })
-            .then(gr => {
-                if (gr === null) {
-                    ws.send(JSON.stringify({
-                        responseTo: 'join',
-                        success: false,
-                        error: 'Game room not found'
-                    }));
-                    return;
-                }
+    async function doActionJoin(ws, code) {
+        try {
+            const gr = await gameroomService.findByCode(code);
 
-                gr.addMember(ws.user.get().id)
-                    .then(() => {
-                        ws.send(JSON.stringify({
-                            responseTo: 'join',
-                            success: true,
-                            gameroom: GameRoom.exportObject(gr, true)
-                        }));
-                    })
-                    .catch(e => {
-                        console.error('WS doActionJoin addMember error:', e.message);
-                        ws.send(JSON.stringify({
-                            responseTo: 'join',
-                            success: false,
-                            error: 'Failed to join game room'
-                        }));
-                    });
-            })
-            .catch(e => {
-                console.error('WS doActionJoin error:', e.message);
+            if (gr === null) {
                 ws.send(JSON.stringify({
                     responseTo: 'join',
                     success: false,
                     error: 'Game room not found'
                 }));
-            });
+                return;
+            }
+
+            await scoreService.addMember(gr, ws.user.get().id);
+
+            ws.send(JSON.stringify({
+                responseTo: 'join',
+                success: true,
+                gameroom: GameRoom.exportObject(gr, true)
+            }));
+        } catch (e) {
+            console.error('WS doActionJoin error:', e.message);
+            ws.send(JSON.stringify({
+                responseTo: 'join',
+                success: false,
+                error: 'Failed to join game room'
+            }));
+        }
     }
 
     /*
      * 'im-ready' -> Confirm that a waiting client is ready to start playing.
      */
-    function doActionImReady(ws, data) {
-        GameRoom.findOne({
-            where: {
-                id: data.gameroom,
-                timeEnded: null
-            },
-            include: [
-                {
-                    model: User,
-                    as: 'owner'
-                },
-                {
-                    model: User,
-                    as: 'members'
-                }
-            ]
-        })
-            .then(gr => {
-                if (gr === null) return;
+    async function doActionImReady(ws, data) {
+        try {
+            const gr = await gameroomService.findActiveById(data.gameroom);
+            if (gr === null) return;
 
-                let sendToList = gr.members.map(m => m.id).filter(id => id != ws.user.id);
-                sendToList.push(gr.ownerId);
+            let sendToList = gr.members.map(m => m.id).filter(id => id != ws.user.id);
+            sendToList.push(gr.ownerId);
 
-                const payload = {
-                    req: 'player-is-ready',
-                    user: User.exportObject(ws.user),
-                    gameroom: data.gameroom
-                };
+            const payload = {
+                req: 'player-is-ready',
+                user: User.exportObject(ws.user),
+                gameroom: data.gameroom
+            };
 
-                for (let id of sendToList) {
-                    sendToUser(id, payload);
-                }
-            })
-            .catch(e => {
-                console.error('WS doActionImReady error:', e.message);
-            });
+            for (let id of sendToList) {
+                sendToUser(id, payload);
+            }
+        } catch (e) {
+            console.error('WS doActionImReady error:', e.message);
+        }
     }
 
     /*
      * Start a new game room session.
      */
-    function doActionStartGame(ws, data) {
-        GameRoom.findOne({
-            where: {
-                id: data.gameroom
-            },
-            include: [
-                {
-                    model: User,
-                    as: 'owner'
-                },
-                {
-                    model: User,
-                    as: 'members'
-                },
-                {
-                    model: Game,
-                    as: 'game'
-                }
-            ]
-        })
-            .then(gr => {
-                if (gr === null) return;
+    async function doActionStartGame(ws, data) {
+        try {
+            const gr = await gameroomService.findWithGameById(data.gameroom);
+            if (gr === null) return;
 
-                gr.timeStarted = toMysqlFormat(new Date());
-                gr.save()
-                    .then(result => {
-                        let sendToList = gr.members.filter(m => m.id != ws.user.id);
-                        sendToList.push(gr.owner);
+            await gameroomService.markStarted(gr);
 
-                        for (let user of sendToList) {
-                            sendToUser(user.id, {
-                                req: 'game-started',
-                                gameroom: data.gameroom,
-                                startTime: gr.timeStarted,
-                                path: gr.game.basePath,
-                                token: authlogic.createJWT(user)
-                            });
-                        }
-                    })
-                    .catch(e => {
-                        console.error('WS doActionStartGame save error:', e.message);
-                    });
-            })
-            .catch(e => {
-                console.error('WS doActionStartGame error:', e.message);
-            });
-    }
+            let sendToList = gr.members.filter(m => m.id != ws.user.id);
+            sendToList.push(gr.owner);
 
-
-    //Adapted from https://stackoverflow.com/a/5133807/641312    
-    function toMysqlFormat(date) {
-        function pad(d) {
-            if (0 <= d && d < 10) return "0" + d.toString();
-            if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
-            return d.toString();
+            for (let user of sendToList) {
+                sendToUser(user.id, {
+                    req: 'game-started',
+                    gameroom: data.gameroom,
+                    startTime: gr.timeStarted,
+                    path: gr.game.basePath,
+                    token: authlogic.createJWT(user)
+                });
+            }
+        } catch (e) {
+            console.error('WS doActionStartGame error:', e.message);
         }
-        return date.getUTCFullYear() + "-" + pad(1 + date.getUTCMonth()) + "-" + pad(date.getUTCDate()) + " " + pad(date.getUTCHours()) + ":" + pad(date.getUTCMinutes()) + ":" + pad(date.getUTCSeconds());
     }
 
     /**
      * Updates the score for an ongoing game.
      */
-    function doActionUpdateScore(ws, data) {
-        GameRoom.findOne({
-            where: {
-                id: data.gameroom
-            }
-        })
-            .then(gr => {
-                if (gr === null) return;
+    async function doActionUpdateScore(ws, data) {
+        try {
+            const gr = await gameroomService.findSimpleById(data.gameroom);
+            if (gr === null) return;
 
-                //Send new score to the game room owner
-                sendToUser(gr.ownerId, {
-                    req: 'update-score',
-                    user: ws.user.id,
+            //Send new score to the game room owner
+            sendToUser(gr.ownerId, {
+                req: 'update-score',
+                user: ws.user.id,
+                gameroom: data.gameroom,
+                score: data.score,
+                endgame: data.endgame
+            });
+
+            //Update database with new score and endgame status
+            await scoreService.updateScore(ws.user.id, data.gameroom, data.score, data.endgame);
+
+            //If this player has finished...
+            if (data.endgame) {
+
+                //... send a confirmation message ...
+                sendToUser(ws.user.id, {
+                    req: 'user-game-over',
+                    user: User.exportObject(ws.user),
                     gameroom: data.gameroom,
-                    score: data.score,
-                    endgame: data.endgame
+                    score: data.score
                 });
 
-                //Update database with new score and endgame status
-                return UsersGameRooms.update(
-                    {
-                        score: data.score,
-                        ended: data.endgame
-                    },
-                    {
-                        where: {
-                            userId: ws.user.id,
-                            gameRoomId: data.gameroom,
-                            ended: false
-                        }
-                    }
-                )
-                    .then(n => {
-                        //If this player has finished...
-                        if (data.endgame) {          
-
-                            //... send a confirmation message ...
-                            sendToUser(ws.user.id, {
-                                req: 'user-game-over',
-                                user: User.exportObject(ws.user),
-                                gameroom: data.gameroom,
-                                score: data.score
-                            });                            
-                            
-                            //... and check if the game is also over for everybody else
-                            return UsersGameRooms.findAndCountAll({
-                                where: {
-                                    gameRoomId: data.gameroom,
-                                    ended: false
-                                }
-                            })
-                                .then(obj => {
-                                    if (obj.count === 0) {
-                                        wrapUpGameRoom(gr);
-                                    }
-                                });
-                        }
-                    });
-            })
-            .catch(e => {
-                console.error('WS doActionUpdateScore error:', e.message);
-            });
+                //... and check if the game is also over for everybody else
+                const activePlayers = await scoreService.countActivePlayers(data.gameroom);
+                if (activePlayers === 0) {
+                    await wrapUpGameRoom(gr);
+                }
+            }
+        } catch (e) {
+            console.error('WS doActionUpdateScore error:', e.message);
+        }
     }
 
     /**
      * Forces an ongoing game to end prematurely.
      */
-    function doActionEndGame(ws, data) {
-        UsersGameRooms.update(
-            { ended: true },
-            { where: { gameRoomId: data.gameroom } }
-        )
-            .then(n => {
-                return GameRoom.findOne(
-                    { where: { id: data.gameroom } }
-                )
-                    .then(gr => {
-                        if (gr === null) return;
-                        wrapUpGameRoom(gr);
-                    });
-            })
-            .catch(e => {
-                console.error('WS doActionEndGame error:', e.message);
-            });
+    async function doActionEndGame(ws, data) {
+        try {
+            await scoreService.endAllPlayers(data.gameroom);
+
+            const gr = await gameroomService.findSimpleById(data.gameroom);
+            if (gr === null) return;
+
+            await wrapUpGameRoom(gr);
+        } catch (e) {
+            console.error('WS doActionEndGame error:', e.message);
+        }
     }
 
     /**
      * Udpdates the database and send the owner a message to indicate that
      * the game is over for a game room.
      */
-    function wrapUpGameRoom(gr) {
-        gr.timeEnded = toMysqlFormat(new Date());
-        gr.save()
-            .then(result => {
-                sendToUser(gr.ownerId, {
-                    req: 'game-over',
-                    gameroom: gr.id,
-                    endTime: gr.timeEnded
-                });
-            })
-            .catch(e => {
-                console.error('WS wrapUpGameRoom error:', e.message);
+    async function wrapUpGameRoom(gr) {
+        try {
+            await gameroomService.markEnded(gr);
+
+            sendToUser(gr.ownerId, {
+                req: 'game-over',
+                gameroom: gr.id,
+                endTime: gr.timeEnded
             });
+        } catch (e) {
+            console.error('WS wrapUpGameRoom error:', e.message);
+        }
     }
 };
