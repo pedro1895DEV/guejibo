@@ -6,5 +6,5 @@ export const environment = {
   production: false,
   apiUrl: `${isHttps ? 'https:' : 'http:'}//${host}:3000/`,
   wsUrl: `${isHttps ? 'wss:' : 'ws:'}//${host}:3000/`,
-  gamesPath: `${isHttps ? 'https:' : 'http:'}//${host}:3000/games/`
+  gamesPath: `${isHttps ? 'https:' : 'http:'}//${host}/Games/`
 };
