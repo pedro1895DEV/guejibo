@@ -38,6 +38,11 @@ export class GameConnection {
      * Automatically reconnects with exponential backoff on failure.
      */
     private connect() {
+        if (!this.jwt) {
+            console.warn('[GamesLib] No JWT cookie found. Running in standalone/preview mode without multiplayer WebSocket.');
+            return;
+        }
+
         if (
             (this.ws !== undefined) &&
             (this.ws.readyState == WebSocket.OPEN)
