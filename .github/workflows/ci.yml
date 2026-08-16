@@ -1,0 +1,128 @@
+name: CI
+
+on:
+  push:
+    branches: [master, main, staging]
+  pull_request:
+    branches: [master, main]
+
+jobs:
+  # ──────────────────────────────────────────────
+  # Backend: lint + build
+  # ──────────────────────────────────────────────
+  server-lint:
+    name: Server — Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Server
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: Server/package-lock.json
+
+      - run: npm ci
+      - run: npx eslint .
+
+  # ──────────────────────────────────────────────
+  # Frontend: lint + build
+  # ──────────────────────────────────────────────
+  client-lint:
+    name: Client — Lint
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: Client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: Client/package-lock.json
+
+      - run: npm ci
+      - run: npx ng lint
+
+  client-build:
+    name: Client — Build
+    runs-on: ubuntu-latest
+    needs: client-lint
+    defaults:
+      run:
+        working-directory: Client
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: Client/package-lock.json
+
+      - run: npm ci
+      - run: npx ng build --configuration production
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: client-dist
+          path: Client/dist/
+          retention-days: 7
+
+  # ──────────────────────────────────────────────
+  # GamesLib: build
+  # ──────────────────────────────────────────────
+  gameslib-build:
+    name: GamesLib — Build
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: GamesLib
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: npm
+          cache-dependency-path: GamesLib/package-lock.json
+
+      - run: npm ci
+      - run: npm run build
+
+  # ──────────────────────────────────────────────
+  # Docker: build image (validates Dockerfile)
+  # ──────────────────────────────────────────────
+  docker-build:
+    name: Docker — Build Image
+    runs-on: ubuntu-latest
+    needs: [server-lint, client-build, gameslib-build]
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build Server image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./Server
+          file: ./Server/Dockerfile
+          push: false
+          tags: guejibo/server:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Build Apache image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          file: ./dockerfile
+          push: false
+          tags: guejibo/apache:ci
+          cache-from: type=gha
+          cache-to: type=gha,mode=max

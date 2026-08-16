@@ -2,7 +2,11 @@
  "name": "iacweb-server",
  "main": "index.js",
  "scripts": {
-  "start": "node ./index"
+  "start": "node ./index",
+  "lint": "eslint ."
+ },
+ "devDependencies": {
+  "eslint": "^8.57.0"
  },
  "dependencies": {
   "base64url": "^3.0.1",

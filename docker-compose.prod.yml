@@ -24,6 +24,7 @@ services:
       start_period: 30s
 
   app:
+    image: ${SERVER_IMAGE:-ghcr.io/pedro1895dev/guejibo/server:latest}
     build:
       context: ./Server
       dockerfile: Dockerfile
@@ -48,6 +49,7 @@ services:
         condition: service_healthy
 
   apache:
+    image: ${APACHE_IMAGE:-ghcr.io/pedro1895dev/guejibo/apache:latest}
     build:
       context: .
       dockerfile: dockerfile
