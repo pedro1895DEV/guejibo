@@ -3,6 +3,7 @@ import { AuthService } from '../auth.service';
 import { NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
 
+
 @Component({
     selector: 'app-topbar',
     templateUrl: './topbar.component.html',
@@ -28,7 +29,8 @@ export class TopbarComponent implements OnInit {
   }
 
   updateLoggedInStatus(){
-    if(this.loggedIn = this.authService.isLoggedIn()){
+    this.loggedIn = this.authService.isLoggedIn();
+    if (this.loggedIn) {
       this.user = this.authService.getLoggedInUser();
     }
   }

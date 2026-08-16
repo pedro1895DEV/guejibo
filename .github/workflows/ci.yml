@@ -71,7 +71,7 @@ jobs:
       - uses: actions/upload-artifact@v4
         with:
           name: client-dist
-          path: Client/dist/
+          path: Client/dist/client/browser/
           retention-days: 7
 
   # ──────────────────────────────────────────────
@@ -83,6 +83,8 @@ jobs:
     defaults:
       run:
         working-directory: GamesLib
+    env:
+      NODE_OPTIONS: --openssl-legacy-provider
     steps:
       - uses: actions/checkout@v4
 
