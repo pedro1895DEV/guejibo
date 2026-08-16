@@ -9,7 +9,7 @@ module.exports = merge(common, {
     mode: 'production',
     plugins: [
         new webpack.DefinePlugin({
-            WSURL: "(window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.hostname + ':3000/'"
+            WSURL: "(window.location.protocol === 'https:' ? 'wss://' : 'ws://') + window.location.host + '/ws/'"
         })
     ]
 });

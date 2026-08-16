@@ -49,6 +49,9 @@ services:
     image: ${APACHE_IMAGE:-ghcr.io/pedro1895dev/guejibo/apache:latest}
     ports:
       - "80:80"
+      - "443:443"
+    volumes:
+      - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
       - app
 
