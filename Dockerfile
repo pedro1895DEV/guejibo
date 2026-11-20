@@ -4,7 +4,6 @@ WORKDIR /usr/src/gameslib
 COPY GamesLib/package.json GamesLib/package-lock.json ./
 RUN npm ci
 COPY GamesLib/ .
-ENV NODE_OPTIONS="--openssl-legacy-provider"
 RUN npm run build
 
 # Stage 2: Build the Angular client

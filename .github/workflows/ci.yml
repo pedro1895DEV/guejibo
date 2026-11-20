@@ -77,16 +77,14 @@ jobs:
           retention-days: 7
 
   # ──────────────────────────────────────────────
-  # GamesLib: build
+  # GamesLib: build & test
   # ──────────────────────────────────────────────
   gameslib-build:
-    name: GamesLib — Build
+    name: GamesLib — Build & Test
     runs-on: ubuntu-latest
     defaults:
       run:
         working-directory: GamesLib
-    env:
-      NODE_OPTIONS: --openssl-legacy-provider
     steps:
       - uses: actions/checkout@v4
 
@@ -97,7 +95,9 @@ jobs:
           cache-dependency-path: GamesLib/package-lock.json
 
       - run: npm ci
+      - run: npm run typecheck
       - run: npm run build
+      - run: npm test
 
   # ──────────────────────────────────────────────
   # Docker: build image (validates Dockerfile)

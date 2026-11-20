@@ -3,7 +3,7 @@
 #
 # Required environment variables (set in .env or export before running):
 #   MYSQL_ROOT_PASSWORD, MYSQL_DATABASE
-#   SESSION_SECRET, JWT_SECRET
+#   JWT_SECRET
 #   API_URL, CLIENT_URL, CORS_ORIGIN
 #   DB_HOST=db, DB_NAME, DB_USER=root, DB_PASS
 
@@ -36,7 +36,6 @@ services:
       DB_USER: root
       DB_PASS: ${MYSQL_ROOT_PASSWORD}
       JWT_SECRET: ${JWT_SECRET}
-      SESSION_SECRET: ${SESSION_SECRET}
       CORS_ORIGIN: ${CORS_ORIGIN}
       API_URL: ${API_URL}
       CLIENT_URL: ${CLIENT_URL}
@@ -45,6 +44,12 @@ services:
     depends_on:
       db:
         condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
 
   apache:
     image: ${APACHE_IMAGE:-ghcr.io/pedro1895dev/guejibo/apache:latest}
@@ -55,7 +60,8 @@ services:
     volumes:
       - /etc/letsencrypt:/etc/letsencrypt:ro
     depends_on:
-      - app
+      app:
+        condition: service_healthy
 
 volumes:
   mariadb_data:
