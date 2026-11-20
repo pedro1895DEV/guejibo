@@ -1,5 +1,5 @@
 # Stage 1: Build the GamesLib
-FROM node:18-alpine AS gameslib-build
+FROM node:22-alpine AS gameslib-build
 WORKDIR /usr/src/gameslib
 COPY GamesLib/package.json GamesLib/package-lock.json ./
 RUN npm ci
@@ -8,7 +8,7 @@ ENV NODE_OPTIONS="--openssl-legacy-provider"
 RUN npm run build
 
 # Stage 2: Build the Angular client
-FROM node:18-alpine AS client-build
+FROM node:22-alpine AS client-build
 WORKDIR /usr/src/app
 COPY Client/package.json Client/package-lock.json ./
 RUN npm ci

@@ -25,8 +25,9 @@ services:
 
   app:
     image: ${SERVER_IMAGE:-ghcr.io/pedro1895dev/guejibo/server:latest}
-    ports:
-      - "3000:3000"
+    restart: always
+    expose:
+      - "3000"
     environment:
       NODE_ENV: production
       DB_HOST: db
@@ -47,6 +48,7 @@ services:
 
   apache:
     image: ${APACHE_IMAGE:-ghcr.io/pedro1895dev/guejibo/apache:latest}
+    restart: always
     ports:
       - "80:80"
       - "443:443"

@@ -11,7 +11,7 @@ jobs:
   # Backend: lint + build
   # ──────────────────────────────────────────────
   server-lint:
-    name: Server — Lint
+    name: Server — Lint & Test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -21,18 +21,19 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           cache: npm
           cache-dependency-path: Server/package-lock.json
 
       - run: npm ci
       - run: npx eslint .
+      - run: npm test
 
   # ──────────────────────────────────────────────
   # Frontend: lint + build
   # ──────────────────────────────────────────────
   client-lint:
-    name: Client — Lint
+    name: Client — Lint & Test
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -42,12 +43,13 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           cache: npm
           cache-dependency-path: Client/package-lock.json
 
       - run: npm ci
       - run: npx ng lint
+      - run: npx ng test --watch=false --browsers=ChromeHeadless
 
   client-build:
     name: Client — Build
@@ -61,7 +63,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           cache: npm
           cache-dependency-path: Client/package-lock.json
 
@@ -90,7 +92,7 @@ jobs:
 
       - uses: actions/setup-node@v4
         with:
-          node-version: 18
+          node-version: 22
           cache: npm
           cache-dependency-path: GamesLib/package-lock.json
 
@@ -123,7 +125,7 @@ jobs:
         uses: docker/build-push-action@v6
         with:
           context: .
-          file: ./dockerfile
+          file: ./Dockerfile
           push: false
           tags: guejibo/apache:ci
           cache-from: type=gha
