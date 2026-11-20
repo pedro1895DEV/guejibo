@@ -8,6 +8,12 @@ module.exports = {
     return gameroomModel.addMember(userId);
   },
 
+  async findActiveMembership(userId, gameroomId) {
+    return UsersGameRooms.findOne({
+      where: { userId, gameRoomId: gameroomId, ended: false }
+    });
+  },
+
   async updateScore(userId, gameroomId, score, ended) {
     return UsersGameRooms.update(
       { score, ended },

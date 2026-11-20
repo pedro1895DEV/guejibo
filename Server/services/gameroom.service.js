@@ -8,15 +8,18 @@ const gamelogic = require('../app/gamelogic');
 
 module.exports = {
   async create(gameId, ownerId) {
+    const game = await Game.findOne({ where: { id: gameId } });
+    if (!game) {
+      return null;
+    }
+
     const gr = await GameRoom.create({
-      gameId,
+      gameId: game.id,
       ownerId,
       timeStarted: null,
       timeEnded: null,
       code: gamelogic.createGameRoomCode()
     });
-
-    const game = await Game.findOne({ where: { id: gameId } });
 
     return {
       id: gr.id,
@@ -26,20 +29,23 @@ module.exports = {
   },
 
   async createForGuest(gameId) {
+    const game = await Game.findOne({ where: { id: gameId } });
+    if (!game) {
+      return null;
+    }
+
     const guestUser = await User.create({
       name: gamelogic.createRandomUserName(),
       temporary: true
     });
 
     const gr = await GameRoom.create({
-      gameId,
+      gameId: game.id,
       ownerId: guestUser.id,
       timeStarted: null,
       timeEnded: null,
       code: gamelogic.createGameRoomCode()
     });
-
-    const game = await Game.findOne({ where: { id: gameId } });
 
     return {
       id: gr.id,
@@ -121,9 +127,9 @@ module.exports = {
 
 function toMysqlFormat(date) {
   function pad(d) {
-    if (0 <= d && d < 10) return "0" + d.toString();
-    if (-10 < d && d < 0) return "-0" + (-1 * d).toString();
+    if (0 <= d && d < 10) return '0' + d.toString();
+    if (-10 < d && d < 0) return '-0' + (-1 * d).toString();
     return d.toString();
   }
-  return date.getUTCFullYear() + "-" + pad(1 + date.getUTCMonth()) + "-" + pad(date.getUTCDate()) + " " + pad(date.getUTCHours()) + ":" + pad(date.getUTCMinutes()) + ":" + pad(date.getUTCSeconds());
+  return date.getUTCFullYear() + '-' + pad(1 + date.getUTCMonth()) + '-' + pad(date.getUTCDate()) + ' ' + pad(date.getUTCHours()) + ':' + pad(date.getUTCMinutes()) + ':' + pad(date.getUTCSeconds());
 }

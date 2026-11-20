@@ -1,14 +1,50 @@
-const jwt = require("jwt-simple");
+'use strict';
+
+const jwt = require('jwt-simple');
 const models = require('../sequelize/models');
 const User = models.User;
 
-module.exports = {
-    
-    /*
-     * Creates a JWT for given User object.
-     */
-    createJWT: function(obj){
-        return jwt.encode(User.exportObject(obj, true), process.env.JWT_SECRET);
-    }
+const DEFAULT_JWT_TTL_SECONDS = 24 * 60 * 60; // 24 hours
+const DEV_FALLBACK_JWT_SECRET = 'dev-only-insecure-jwt-secret';
 
+function getJwtSecret() {
+  if (process.env.JWT_SECRET) {
+    return process.env.JWT_SECRET;
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error('JWT_SECRET env var is required in production');
+  }
+  return DEV_FALLBACK_JWT_SECRET;
+}
+
+function getJwtTtlSeconds() {
+  const parsed = Number(process.env.JWT_EXPIRES_IN_SECONDS);
+  if (Number.isFinite(parsed) && parsed > 0) {
+    return parsed;
+  }
+  return DEFAULT_JWT_TTL_SECONDS;
+}
+
+module.exports = {
+  getJwtSecret,
+
+  /*
+   * Creates a signed HS256 JWT with expiration for given User object.
+   */
+  createJWT: function (obj) {
+    const now = Math.floor(Date.now() / 1000);
+    const payload = {
+      ...User.exportObject(obj, true),
+      iat: now,
+      exp: now + getJwtTtlSeconds()
+    };
+    return jwt.encode(payload, getJwtSecret(), 'HS256');
+  },
+
+  /*
+   * Verifies signature (pinned to HS256) and expiration of a JWT.
+   */
+  verifyJWT: function (token) {
+    return jwt.decode(token, getJwtSecret(), false, 'HS256');
+  }
 };

@@ -24,6 +24,16 @@ module.exports = {
     dialect: process.env.DB_DIALECT || 'mariadb',
     operatorsAliases: 0
   },
+  test: {
+    username: process.env.DB_USER || 'root',
+    password: process.env.DB_PASS || 'admin',
+    database: process.env.DB_NAME || 'guejibo_test',
+    host: process.env.DB_HOST || '127.0.0.1',
+    port: process.env.DB_PORT || 3306,
+    dialect: process.env.DB_DIALECT || 'mariadb',
+    operatorsAliases: 0,
+    logging: false
+  },
   production: {
     username: process.env.DB_USER,
     password: process.env.DB_PASS,

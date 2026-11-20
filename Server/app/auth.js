@@ -1,11 +1,24 @@
-const LocalStrategy = require("passport-local").Strategy;
+'use strict';
+
+const LocalStrategy = require('passport-local').Strategy;
 const bcrypt = require('bcryptjs');
 const models = require('../sequelize/models');
 const User = models.User;
+const authlogic = require('./authlogic');
 
-const passportJWT = require("passport-jwt");
+const passportJWT = require('passport-jwt');
 const JWTStrategy = passportJWT.Strategy;
 const ExtractJWT = passportJWT.ExtractJwt;
+
+const MIN_PASSWORD_LENGTH = 8;
+
+function isValidRegistrationInput(name, email, password) {
+  return (
+    typeof name === 'string' && name.trim().length > 0 &&
+    typeof email === 'string' && email.trim().length > 0 &&
+    typeof password === 'string' && password.length >= MIN_PASSWORD_LENGTH
+  );
+}
 
 module.exports = function (passport) {
 
@@ -15,7 +28,8 @@ module.exports = function (passport) {
 
   passport.deserializeUser((id, done) => {
     User.findOne({ where: { id: id } })
-      .then((user) => { done(null, user); });
+      .then((user) => done(null, user))
+      .catch((err) => done(err));
   });
 
   passport.use(
@@ -26,8 +40,7 @@ module.exports = function (passport) {
       passReqToCallback: true
     },
       (req, email, password, done) => {
-
-        let returnFunction = user => done(null, user);
+        const returnFunction = user => done(null, user);
 
         if ('id' in req.body) {
           completeRegistration(req, email, password, returnFunction);
@@ -35,53 +48,57 @@ module.exports = function (passport) {
         else {
           registerNewUser(req, email, password, returnFunction);
         }
-
-
-
       })
   );
 
   function completeRegistration(req, email, password, returnFunction) {
+    if (!isValidRegistrationInput(req.body.name, email, password)) {
+      return returnFunction(false);
+    }
+
     User.findOne({ where: { id: req.body.id, temporary: true } })
       .then(
         existingUser => {
           if (existingUser === null) {
             return returnFunction(false);
           }
-          else {
-            existingUser.name = req.body.name;
-            existingUser.email = email;
-            existingUser.password = bcrypt.hashSync(password, 10);
-            existingUser.temporary = false;
 
-            existingUser.save()
-              .then(returnFunction)
-              .catch(() => returnFunction(false));
-          }
+          existingUser.name = req.body.name.trim();
+          existingUser.email = email.trim();
+          existingUser.password = bcrypt.hashSync(password, 10);
+          existingUser.temporary = false;
+
+          return existingUser.save()
+            .then(returnFunction)
+            .catch(() => returnFunction(false));
         }
       )
       .catch(() => returnFunction(false));
   }
 
   function registerNewUser(req, email, password, returnFunction) {
-    User.findOne({ where: { email: email } })
+    if (!isValidRegistrationInput(req.body.name, email, password)) {
+      return returnFunction(false);
+    }
+
+    const normalizedEmail = email.trim();
+
+    User.findOne({ where: { email: normalizedEmail } })
       .then(
         user => {
           if (user === null) {
-            User.create(
-              {
-                name: req.body.name,
-                email: email,
-                password: bcrypt.hashSync(password, 10)
-              }
-            )
-              .then(returnFunction);
+            return User.create({
+              name: req.body.name.trim(),
+              email: normalizedEmail,
+              password: bcrypt.hashSync(password, 10)
+            })
+              .then(returnFunction)
+              .catch(() => returnFunction(false));
           }
-          else {
-            return returnFunction(null, false);
-          }
+          return returnFunction(false);
         }
-      );
+      )
+      .catch(() => returnFunction(false));
   }
 
   passport.use(
@@ -94,18 +111,16 @@ module.exports = function (passport) {
       (req, email, password, done) => {
         User.findOne({ where: { email: email } })
           .then((user) => {
-
-            const errorMsg = 'Invalid credentials';
-            if (user === null) {
+            if (user === null || !user.get().password) {
               return done(null, false);
             }
-            else {
-              if (bcrypt.compareSync(password, user.get().password))
-                return done(null, user);
-              else
-                return done(null, false);
+
+            if (bcrypt.compareSync(password, user.get().password)) {
+              return done(null, user);
             }
-          });
+            return done(null, false);
+          })
+          .catch((err) => done(err));
       })
   );
 
@@ -113,7 +128,8 @@ module.exports = function (passport) {
     'local-jwt',
     new JWTStrategy({
       jwtFromRequest: ExtractJWT.fromAuthHeaderAsBearerToken(),
-      secretOrKey: process.env.JWT_SECRET
+      secretOrKey: authlogic.getJwtSecret(),
+      algorithms: ['HS256']
     },
       (jwtPayload, done) => {
         return done(null, jwtPayload);
