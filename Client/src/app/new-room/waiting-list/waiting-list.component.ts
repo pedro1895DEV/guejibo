@@ -1,10 +1,10 @@
-import { Component, OnInit, Input, OnDestroy, Output, EventEmitter } from '@angular/core';
+import { Component, OnInit, Input, Output, EventEmitter } from '@angular/core';
 import { WaitingUser, WaitingUserComponent } from '../waiting-user/waiting-user.component';
 import { WaitingListService } from 'src/app/waiting-list.service';
 import { NgClass, NgIf, NgFor } from '@angular/common';
 
 export enum State {
-  Waiting, Playing
+  Waiting, Playing, Ended
 }
 
 @Component({
@@ -15,44 +15,50 @@ export enum State {
 })
 export class WaitingListComponent implements OnInit {
   public StateEnum = State;
-  
-  public users: WaitingUser[];
-  public state: State;  
 
-  @Input() showStartGameButton = false;
-  @Input() permanentOnlineUser = null;
+  public users: WaitingUser[] = [];
+  public state: State = State.Waiting;
+
+  @Input() showStartGameButton: boolean | string = false;
+  @Input() permanentOnlineUser: WaitingUser | null = null;
 
   @Output() public gameStart = new EventEmitter<void>();
+  @Output() public gameEnd = new EventEmitter<void>();
 
   constructor(
     private waitingListService: WaitingListService
-  ) {
-    this.state = State.Waiting;
-  }
+  ) { }
 
   ngOnInit(): void {
     this.users = this.waitingListService.getUsers();
   }
 
   getHeightClass(): string {
-    if (!this.users)
+    if (!this.users) {
       return '';
-
+    }
     if (this.users.length <= 30) {
       return 'height1';
     }
-    else if (this.users.length <= 60) {
+    if (this.users.length <= 60) {
       return 'height2';
     }
-    else if (this.users.length <= 93) {
-      return 'height3';
-    }
+    return 'height3';
   }
 
-  startGame() : void {
+  startGame(): void {
     this.state = State.Playing;
     this.gameStart.emit();
   }
 
-}
+  endGame(): void {
+    this.gameEnd.emit();
+  }
 
+  markEnded(): void {
+    this.state = State.Ended;
+    this.waitingListService.stopMonitoring();
+    this.waitingListService.sortUsersByScore();
+  }
+
+}

@@ -1,8 +1,8 @@
-import { Component, OnInit, Input } from '@angular/core';
-import { AuthService } from '../auth.service';
+import { Component, OnInit, OnDestroy, Input } from '@angular/core';
+import { AuthService, User } from '../auth.service';
+import { Subscription } from 'rxjs';
 import { NgIf } from '@angular/common';
 import { RouterLink } from '@angular/router';
-
 
 @Component({
     selector: 'app-topbar',
@@ -10,14 +10,14 @@ import { RouterLink } from '@angular/router';
     styleUrls: ['./topbar.component.scss'],
     imports: [NgIf, RouterLink]
 })
-export class TopbarComponent implements OnInit {
+export class TopbarComponent implements OnInit, OnDestroy {
 
-  @Input() showLogo: boolean = true;
+  @Input() showLogo = true;
   title = 'Client';
-  user = { name: '' };
+  user: User = { id: 0, name: '' };
   loggedIn = false;
-  
-  testMessage:string = 'yalala';
+
+  private userSub: Subscription | null = null;
 
   constructor(
     private authService: AuthService
@@ -26,12 +26,25 @@ export class TopbarComponent implements OnInit {
   ngOnInit(): void {
     this.authService.initTopbarReference(this);
     this.updateLoggedInStatus();
+    this.userSub = this.authService.currentUser$.subscribe(currentUser => {
+      this.loggedIn = currentUser !== null;
+      this.user = currentUser || { id: 0, name: '' };
+    });
   }
 
-  updateLoggedInStatus(){
+  ngOnDestroy(): void {
+    if (this.userSub) {
+      this.userSub.unsubscribe();
+    }
+  }
+
+  updateLoggedInStatus(): void {
     this.loggedIn = this.authService.isLoggedIn();
-    if (this.loggedIn) {
-      this.user = this.authService.getLoggedInUser();
+    const loggedUser = this.authService.getLoggedInUser();
+    if (this.loggedIn && loggedUser) {
+      this.user = loggedUser;
+    } else {
+      this.user = { id: 0, name: '' };
     }
   }
 

@@ -1,22 +1,24 @@
 import { Injectable } from '@angular/core';
 import { HttpClient, HttpHeaders } from '@angular/common/http';
-import { Observable } from 'rxjs';
+import { BehaviorSubject, Observable } from 'rxjs';
 import { tap } from 'rxjs/operators';
 import { environment } from 'src/environments/environment';
 import Cookies from 'js-cookie';
 import { jwtDecode } from 'jwt-decode';
 
 export interface User {
-  id: number,
-  name: string,
-  email?: string
+  id: number;
+  name: string;
+  email?: string;
 }
 
 export interface Response {
-  success: boolean,
-  token?: string,
-  error?: string
+  success: boolean;
+  token?: string;
+  error?: string;
 }
+
+type TokenValidationStatus = 'valid' | 'temporary' | 'invalid';
 
 @Injectable({
   providedIn: 'root'
@@ -25,11 +27,16 @@ export class AuthService {
 
   private topbar: { updateLoggedInStatus: () => void } | null = null;
 
-  private loggedIn: boolean = false;
+  private loggedIn = false;
   private token: string | null = null;
   private currentUser: User | null = null;
 
-  constructor(private http: HttpClient) { }
+  private currentUserSubject = new BehaviorSubject<User | null>(null);
+  public currentUser$: Observable<User | null> = this.currentUserSubject.asObservable();
+
+  constructor(private http: HttpClient) {
+    this.recoverUserDataFromCookie();
+  }
 
   /**
    * Register a new user in the system.
@@ -51,7 +58,7 @@ export class AuthService {
    */
   public getAuthHeaders(): HttpHeaders {
     return new HttpHeaders({
-      Authorization: 'Bearer ' + this.token
+      Authorization: 'Bearer ' + (this.getToken() || '')
     });
   }
 
@@ -64,9 +71,10 @@ export class AuthService {
   }
 
   /**
-   * Updates logged user info in the Topbar component.
+   * Updates logged user info in the Topbar component and reactive subscribers.
    */
   public updateTopbar(): void {
+    this.currentUserSubject.next(this.currentUser);
     if (this.topbar) {
       this.topbar.updateLoggedInStatus();
     }
@@ -74,6 +82,7 @@ export class AuthService {
 
   /**
    * Reads the stored cookie to recover who is logged in, if necessary.
+   * Temporary guest JWTs are ignored (without deleting the cookie needed by GamesLib).
    */
   private recoverUserDataFromCookie(): void {
     if (this.loggedIn) {
@@ -86,26 +95,32 @@ export class AuthService {
     }
 
     this.token = jwt;
-    if (this.decodeAuthToken()) {
+    const status = this.decodeAuthToken();
+    if (status === 'valid') {
       this.loggedIn = true;
+      this.currentUserSubject.next(this.currentUser);
+    } else if (status === 'temporary') {
+      this.loggedIn = false;
+      this.currentUser = null;
+      this.token = null;
     } else {
       this.clearSession();
     }
   }
 
   /**
-   * Returns whether the user is currently logged in in the system.
+   * Returns whether a registered user is currently logged in in the system.
    */
   public isLoggedIn(): boolean {
     this.recoverUserDataFromCookie();
-    if (this.loggedIn && !this.decodeAuthToken()) {
+    if (this.loggedIn && this.decodeAuthToken() !== 'valid') {
       this.clearSession();
     }
     return this.loggedIn;
   }
 
   /**
-   * Returns the current JWT token.
+   * Returns the current JWT token for a registered user.
    */
   public getToken(): string | null {
     this.recoverUserDataFromCookie();
@@ -123,18 +138,21 @@ export class AuthService {
   }
 
   /**
-   * Decodes the current JWT and validates expiration if present.
-   * Returns false when token is malformed or expired.
+   * Decodes the current JWT and validates expiration and account type.
    */
-  private decodeAuthToken(): boolean {
+  private decodeAuthToken(): TokenValidationStatus {
     if (!this.token) {
-      return false;
+      return 'invalid';
     }
 
     try {
       const decodedJwt = jwtDecode<any>(this.token);
       if (decodedJwt.exp && Date.now() >= decodedJwt.exp * 1000) {
-        return false;
+        return 'invalid';
+      }
+
+      if (decodedJwt.temporary === true) {
+        return 'temporary';
       }
 
       this.currentUser = {
@@ -142,9 +160,9 @@ export class AuthService {
         name: decodedJwt.name,
         email: decodedJwt.email
       };
-      return true;
+      return 'valid';
     } catch {
-      return false;
+      return 'invalid';
     }
   }
 
@@ -154,7 +172,8 @@ export class AuthService {
    */
   public setupUserWithToken(token: string): void {
     this.token = token;
-    if (!this.decodeAuthToken()) {
+    const status = this.decodeAuthToken();
+    if (status !== 'valid') {
       this.clearSession();
       return;
     }

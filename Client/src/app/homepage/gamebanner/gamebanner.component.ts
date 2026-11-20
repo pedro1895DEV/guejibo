@@ -1,4 +1,4 @@
-import { Component, OnInit, Input, isDevMode } from '@angular/core';
+import { Component, OnInit, Input } from '@angular/core';
 import { Game } from 'src/app/games.service';
 import { GameMetadataService } from 'src/app/game-metadata.service';
 import { RouterLink } from '@angular/router';
@@ -11,8 +11,8 @@ import { RouterLink } from '@angular/router';
 })
 export class GamebannerComponent implements OnInit {
 
-  @Input() game: Game;
-  
+  @Input() game!: Game;
+
   constructor(
     private gameMetadataService: GameMetadataService
   ) { }
@@ -21,10 +21,7 @@ export class GamebannerComponent implements OnInit {
   }
 
   public bannerUrl(): string {
-    if(isDevMode())
-      console.log(this.gameMetadataService.getBannerUrl(this.game));
-    return this.gameMetadataService.getBannerUrl(this.game);    
+    return this.gameMetadataService.getBannerUrl(this.game);
   }
 
 }
-

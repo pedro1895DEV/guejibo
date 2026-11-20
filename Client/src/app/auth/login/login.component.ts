@@ -40,7 +40,7 @@ export class LoginComponent implements OnInit {
           this.router.navigateByUrl(this.returnUrl);
         }
         else {
-          this.errorMessage = response['error'];
+          this.errorMessage = response.error || 'E-mail ou senha inválidos.';
         }
       }
     );

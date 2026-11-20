@@ -3,10 +3,10 @@ import { State } from '../waiting-list/waiting-list.component';
 import { NgClass } from '@angular/common';
 
 export interface WaitingUser {
-  name: string,
-  online: boolean,
-  finished: boolean,
-  score: number
+  name: string;
+  online: boolean;
+  finished: boolean;
+  score: number;
 }
 
 @Component({
@@ -16,39 +16,39 @@ export interface WaitingUser {
     imports: [NgClass]
 })
 export class WaitingUserComponent implements OnInit {
-  @Input() user: WaitingUser;
-  @Input() state: State;
+  @Input() user!: WaitingUser;
+  @Input() state: State | string = State.Waiting;
 
   constructor() { }
 
   ngOnInit(): void {
-    this.user.score = 0;
+    if (this.user && this.user.score === undefined) {
+      this.user.score = 0;
+    }
   }
 
   cssClass(): string[] {
-    let css = ['status'];
+    const css = ['status'];
 
-    if (this.user.finished)
+    if (this.user.finished || this.state === State.Ended) {
       css.push('done');
-    else if(this.user.online)
-      css.push( (this.state == State.Playing) ? 'score' : 'online' );        
-    else
+    } else if (this.user.online) {
+      css.push((this.state === State.Playing) ? 'score' : 'online');
+    } else {
       css.push('offline');
+    }
 
     return css;
   }
 
   statusText(): string {
-    if (this.user.finished) {
+    if (this.user.finished || this.state === State.Ended) {
       return this.user.score + ' ✔';
     }
-    else {
-      if (this.user.online)
-        return (this.state == State.Playing) ? this.user.score.toString() : 'online';
-      else
-        return (this.user.score == 0) ? 'offline' : this.user.score + ' (off)';
+    if (this.user.online) {
+      return (this.state === State.Playing) ? this.user.score.toString() : 'online';
     }
+    return (this.user.score === 0) ? 'offline' : this.user.score + ' (off)';
   }
 
 }
-

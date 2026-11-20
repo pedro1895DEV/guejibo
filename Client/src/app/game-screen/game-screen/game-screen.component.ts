@@ -17,8 +17,8 @@ import { MenuComponent } from '../menu/menu.component';
 })
 export class GameScreenComponent implements OnInit {
 
-  public game$: Observable<Game>;
-  public description$: Observable<string>;
+  public game$!: Observable<Game>;
+  public description$!: Observable<string>;
 
   constructor(
     private route: ActivatedRoute,
@@ -38,4 +38,3 @@ export class GameScreenComponent implements OnInit {
   }
 
 }
-

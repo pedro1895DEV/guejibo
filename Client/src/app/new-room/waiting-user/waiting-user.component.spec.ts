@@ -8,19 +8,19 @@ describe('WaitingUserComponent', () => {
 
   beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-    imports: [WaitingUserComponent]
-})
-    .compileComponents();
+      imports: [WaitingUserComponent]
+    }).compileComponents();
   }));
 
   beforeEach(() => {
     fixture = TestBed.createComponent(WaitingUserComponent);
     component = fixture.componentInstance;
-    component.user = { name: 'Player 1', online: true, finished: false, score: 0 };
+    component.user = { name: 'Player 1', online: true, finished: false, score: 250 };
     fixture.detectChanges();
   });
 
-  it('should create', () => {
+  it('should create and preserve existing player score', () => {
     expect(component).toBeTruthy();
+    expect(component.user.score).toBe(250);
   });
 });

@@ -12,15 +12,14 @@ import { GamebannerComponent } from '../gamebanner/gamebanner.component';
 })
 export class GamebannersComponent implements OnInit {
 
-  public games$ : Observable<Game[]>;
+  public games$!: Observable<Game[]>;
 
   constructor(
-    private gamesService : GamesService
+    private gamesService: GamesService
   ) { }
 
   ngOnInit(): void {
-    this.games$ = this.gamesService.getGamesList(); 
+    this.games$ = this.gamesService.getGamesList();
   }
 
 }
-

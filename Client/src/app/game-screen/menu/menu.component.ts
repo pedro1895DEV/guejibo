@@ -1,5 +1,4 @@
 import { Component, OnInit, Input } from '@angular/core';
-import { environment } from 'src/environments/environment';
 import { Game, GamesService } from 'src/app/games.service';
 import { RouterLink } from '@angular/router';
 
@@ -11,7 +10,7 @@ import { RouterLink } from '@angular/router';
 })
 export class MenuComponent implements OnInit {
 
-  @Input() game: Game;
+  @Input() game!: Game;
 
   constructor() { }
 
@@ -23,4 +22,3 @@ export class MenuComponent implements OnInit {
   }
 
 }
-

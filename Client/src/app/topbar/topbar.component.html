@@ -11,6 +11,7 @@
     <div *ngIf="loggedIn">
         <ul>
             <li>{{user.name}}</li>
+            <li><a [routerLink]="'/myrooms'">Minhas salas</a></li>
             <li><a [routerLink]="'/logout'">Sair</a></li>
         </ul>
     </div>

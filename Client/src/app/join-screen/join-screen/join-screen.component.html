@@ -28,6 +28,10 @@
         >
     </div>
 
+    <div id="error" *ngIf="errorMessage">
+        {{errorMessage}}
+    </div>
+
     <button
         type="submit"
         [disabled]="joinForm.invalid"

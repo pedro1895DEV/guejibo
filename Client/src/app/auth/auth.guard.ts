@@ -1,12 +1,25 @@
-import { Injectable } from '@angular/core';
-import { CanActivate, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
+import { Injectable, inject } from '@angular/core';
+import { CanActivate, CanActivateFn, ActivatedRouteSnapshot, RouterStateSnapshot, Router } from '@angular/router';
 import { AuthService } from '../auth.service';
 
 /**
- * Prevents unauthenticated users from accessing protected routes.
- * Redirects to the login page preserving the intended destination
- * as a query parameter so the user can be sent back after logging in.
+ * Functional route guard for Angular 19+.
+ * Redirects unauthenticated users to /login with returnUrl.
  */
+export const authGuard: CanActivateFn = (_route: ActivatedRouteSnapshot, state: RouterStateSnapshot): boolean => {
+  const authService = inject(AuthService);
+  const router = inject(Router);
+
+  if (authService.isLoggedIn()) {
+    return true;
+  }
+
+  router.navigate(['/login'], {
+    queryParams: { returnUrl: state.url }
+  });
+  return false;
+};
+
 @Injectable({
   providedIn: 'root'
 })
@@ -18,15 +31,13 @@ export class AuthGuard implements CanActivate {
   ) { }
 
   canActivate(
-    route: ActivatedRouteSnapshot,
+    _route: ActivatedRouteSnapshot,
     state: RouterStateSnapshot
   ): boolean {
     if (this.authService.isLoggedIn()) {
       return true;
     }
 
-    // Redirect to login with the return URL so we can navigate back
-    // after a successful authentication.
     this.router.navigate(['/login'], {
       queryParams: { returnUrl: state.url }
     });

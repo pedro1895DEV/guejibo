@@ -9,7 +9,7 @@ import { GameMetadataService } from 'src/app/game-metadata.service';
 })
 export class ScreenshotComponent implements OnInit {
 
-  @Input() game: Game;
+  @Input() game!: Game;
 
   constructor(
     private gameMetadataService: GameMetadataService
@@ -24,9 +24,8 @@ export class ScreenshotComponent implements OnInit {
     return `url(${primary}), url(${fallback})`;
   }
 
-  public screenshotUrl() {
+  public screenshotUrl(): string {
     return this.gameMetadataService.getScreenshotUrl(this.game);
   }
 
 }
-

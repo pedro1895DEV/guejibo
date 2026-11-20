@@ -1,3 +1,6 @@
+<div *ngIf="errorMessage" id="error">
+    {{errorMessage}}
+</div>
 <ng-container *ngIf="gameRoom">
     <gs-game-title [game]="gameRoom.game"></gs-game-title>
     <div id="gamecode">
@@ -18,6 +21,7 @@
     </div>
     <nr-waiting-list
         (gameStart)="gameStart()"
-        showStartGameButton="true"
+        (gameEnd)="gameEnd()"
+        [showStartGameButton]="true"
     ></nr-waiting-list>
 </ng-container>

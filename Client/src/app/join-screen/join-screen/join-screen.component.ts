@@ -1,6 +1,6 @@
 import { Component, OnInit, OnDestroy, isDevMode } from '@angular/core';
 import { WebSocketService } from 'src/app/web-socket.service';
-import { AuthService, User } from 'src/app/auth.service';
+import { AuthService } from 'src/app/auth.service';
 import { GlobalConstants } from 'src/app/common/global-constants';
 import { WaitingListService } from 'src/app/waiting-list.service';
 import { environment } from 'src/environments/environment';
@@ -18,13 +18,13 @@ import { WaitingListComponent } from '../../new-room/waiting-list/waiting-list.c
 })
 export class JoinScreenComponent implements OnInit, OnDestroy {
 
-  public code: string = '';
-  public name: string = '';
+  public code = '';
+  public name = '';
   public joined = false;
+  public errorMessage = '';
 
-  private gameRoomId: number;
-  private intervalId;
-
+  private gameRoomId = 0;
+  private intervalId: ReturnType<typeof setInterval> | null = null;
 
   constructor(
     private webSocketService: WebSocketService,
@@ -36,32 +36,40 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
     this.waitingListService.initialize();
   }
 
-  join() {
+  join(): void {
+    this.errorMessage = '';
     const wss = this.webSocketService;
-    if(this.authService.isLoggedIn())
+    if (this.authService.isLoggedIn()) {
       wss.connect();
-    else
+    } else {
       wss.connect((this.name || '').trim());
+    }
 
     // When successfully joined, change interface to waiting list and
-    // start sending "im-ready" messsages
+    // start sending "im-ready" messages
     wss.registerResponseToCallback(
       'join',
       msg => {
         if (!msg.success) {
-          if (isDevMode())
-            console.log("Error trying to join");
-        }
-        else {
+          this.errorMessage = msg.error || 'Sala não encontrada ou já iniciada.';
+          wss.disconnect();
+          if (isDevMode()) {
+            console.log('Error trying to join');
+          }
+        } else {
           this.gameRoomId = msg.gameroom.id;
+
+          if (!this.isLoggedIn() && msg.token) {
+            Cookies.set('jwt', msg.token, { path: '/' });
+            wss.setAuthToken(msg.token);
+          }
+
           this.intervalId = setInterval(
             () => {
-              wss.sendMessage(
-                {
-                  action: "im-ready",
-                  gameroom: this.gameRoomId
-                }
-              );
+              wss.sendMessage({
+                action: 'im-ready',
+                gameroom: this.gameRoomId
+              });
             },
             GlobalConstants.TIMES.SHOUT_IM_HERE_INTERVAL
           );
@@ -82,23 +90,22 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
     wss.registerReqCallback(
       'game-started',
       msg => {
-        Cookies.set('gameroom', msg.gameroom, { path: '/' });
+        Cookies.set('gameroom', String(msg.gameroom), { path: '/' });
 
-        if (!this.isLoggedIn())
+        if (!this.isLoggedIn() && msg.token) {
           Cookies.set('jwt', msg.token, { path: '/' });
+        }
 
         window.open(environment.gamesPath + msg.path + '/index.html', '_self');
       }
     );
 
-    // After registering all the above callbacks, 
+    // After registering all the above callbacks,
     // send a message to the server asking to join the game
-    wss.sendMessage(
-      {
-        action: "join",
-        code: this.code
-      }
-    );
+    wss.sendMessage({
+      action: 'join',
+      code: this.code
+    });
   }
 
   ngOnDestroy(): void {
@@ -106,7 +113,9 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
     this.webSocketService.removeResponseToCallback('join');
     this.webSocketService.removeReqCallback('player-is-ready');
     this.webSocketService.removeReqCallback('game-started');
-    clearInterval(this.intervalId);
+    if (this.intervalId !== null) {
+      clearInterval(this.intervalId);
+    }
   }
 
   isLoggedIn(): boolean {
@@ -114,23 +123,21 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
   }
 
   getUser(): WaitingUser {
-    if (this.isLoggedIn()) {
+    const loggedUser = this.authService.getLoggedInUser();
+    if (this.isLoggedIn() && loggedUser) {
       return {
-        name: this.authService.getLoggedInUser().name,
+        name: loggedUser.name,
         online: true,
         finished: false,
         score: 0
       };
     }
-    else {
-      return {
-        name: this.name,
-        online: true,
-        finished: false,
-        score: 0
-      };
-    }
+    return {
+      name: this.name,
+      online: true,
+      finished: false,
+      score: 0
+    };
   }
 
 }
-

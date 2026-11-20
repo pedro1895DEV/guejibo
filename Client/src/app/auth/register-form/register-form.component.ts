@@ -41,12 +41,12 @@ export class RegisterFormComponent implements OnInit {
       this.model.password1
     )
       .subscribe(response => {
-        if (response.success === true) {
-          this.authService.setupUserWithToken(response['token']);
+        if (response.success === true && response.token) {
+          this.authService.setupUserWithToken(response.token);
           this.success.emit();
         }
         else {
-          this.errorMessage = response['error'];
+          this.errorMessage = response.error || 'Não foi possível criar a conta.';
         }
       });
   }

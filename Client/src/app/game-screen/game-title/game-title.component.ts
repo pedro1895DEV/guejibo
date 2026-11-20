@@ -12,8 +12,8 @@ import { AsyncPipe } from '@angular/common';
 })
 export class GameTitleComponent implements OnInit {
 
-  @Input() game: Game;
-  public credits$: Observable<string>;
+  @Input() game!: Game;
+  public credits$!: Observable<string>;
 
   constructor(
     private gameMetadataService: GameMetadataService
@@ -23,13 +23,12 @@ export class GameTitleComponent implements OnInit {
     this.credits$ = this.gameMetadataService.getCredits(this.game);
   }
 
-   public backgroundUrl(){
+  public backgroundUrl(): string {
     return this.gameMetadataService.getBackgroundUrl(this.game);
   }
 
-  public logoUrl(){
+  public logoUrl(): string {
     return this.gameMetadataService.getLogoUrl(this.game);
   }
 
 }
-

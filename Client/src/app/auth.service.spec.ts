@@ -76,4 +76,15 @@ describe('AuthService', () => {
     expect(service.isLoggedIn()).toBeFalse();
     expect(Cookies.get('jwt')).toBeUndefined();
   });
+
+  it('should not treat temporary guest JWT cookies as logged-in registered sessions', () => {
+    const futureExp = Math.floor(Date.now() / 1000) + 3600;
+    const guestToken = makeFakeJwt({ id: 500, name: 'Guest_99', temporary: true, exp: futureExp });
+    Cookies.set('jwt', guestToken, { path: '/' });
+
+    expect(service.isLoggedIn()).toBeFalse();
+    expect(service.getLoggedInUser()).toBeNull();
+    // Must preserve the cookie so GamesLib can still authenticate during gameplay
+    expect(Cookies.get('jwt')).toBe(guestToken);
+  });
 });

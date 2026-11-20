@@ -10,7 +10,7 @@ import { RouterLink } from '@angular/router';
 })
 export class RegisterSuccessComponent implements OnInit {
 
-  public user: User;
+  public user: User | null = null;
 
   constructor(
     private authService: AuthService
@@ -21,4 +21,3 @@ export class RegisterSuccessComponent implements OnInit {
   }
 
 }
-

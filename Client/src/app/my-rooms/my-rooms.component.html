@@ -1,0 +1,39 @@
+<div class="my-rooms-container">
+    <h1>Minhas Salas</h1>
+
+    <p *ngIf="loading">Carregando salas...</p>
+    <div id="error" *ngIf="errorMessage">{{errorMessage}}</div>
+
+    <p *ngIf="!loading && rooms.length === 0 && !errorMessage">
+        Você ainda não criou nenhuma sala. <a [routerLink]="'/'">Escolha um jogo na página inicial</a> para criar uma!
+    </p>
+
+    <div class="rooms-list" *ngIf="!loading && rooms.length > 0">
+        <div class="room-card" *ngFor="let room of rooms">
+            <div class="room-header">
+                <div>
+                    <strong>{{room.game?.name || 'Jogo'}}</strong> — Código: <span class="code">{{room.code}}</span>
+                </div>
+                <div>
+                    Participantes: {{room.numberOfMembers ?? 0}} |
+                    Status: {{room.timeEnded ? 'Encerrada' : (room.timeStarted ? 'Em andamento' : 'Aguardando')}}
+                </div>
+                <button type="button" (click)="selectRoom(room.id)">
+                    {{selectedRoom?.id === room.id ? 'Ocultar detalhes' : 'Ver detalhes'}}
+                </button>
+            </div>
+
+            <div class="room-details" *ngIf="selectedRoom && selectedRoom.id === room.id">
+                <p *ngIf="selectedRoom.timeStarted">Início: {{selectedRoom.timeStarted}}</p>
+                <p *ngIf="selectedRoom.timeEnded">Término: {{selectedRoom.timeEnded}}</p>
+                <h3>Jogadores na sala:</h3>
+                <ul *ngIf="selectedRoom.members && selectedRoom.members.length > 0">
+                    <li *ngFor="let member of selectedRoom.members">{{member.name}}</li>
+                </ul>
+                <p *ngIf="!selectedRoom.members || selectedRoom.members.length === 0">
+                    Nenhum jogador registrado nesta sala.
+                </p>
+            </div>
+        </div>
+    </div>
+</div>

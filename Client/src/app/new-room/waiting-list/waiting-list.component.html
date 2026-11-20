@@ -1,6 +1,11 @@
 <div id="box">
     <h1>
-        Usuários conectados: {{users? (permanentOnlineUser === null? users.length : users.length + 1) : 0}}
+        <ng-container *ngIf="state !== StateEnum.Ended">
+            Usuários conectados: {{users ? (permanentOnlineUser === null ? users.length : users.length + 1) : 0}}
+        </ng-container>
+        <ng-container *ngIf="state === StateEnum.Ended">
+            Partida encerrada — Classificação Final
+        </ng-container>
     </h1>
     <div
         id="userlist"
@@ -20,10 +25,16 @@
         ></nr-waiting-user>
     </div>
     <button
-        *ngIf="showStartGameButton && state==StateEnum.Waiting"
+        *ngIf="showStartGameButton && state == StateEnum.Waiting"
         (click)="startGame()"
         [disabled]="users.length == 0"
     >
         Iniciar jogo
+    </button>
+    <button
+        *ngIf="showStartGameButton && state == StateEnum.Playing"
+        (click)="endGame()"
+    >
+        Encerrar partida
     </button>
 </div>

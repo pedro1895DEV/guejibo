@@ -1,7 +1,7 @@
 import { Injectable, isDevMode } from '@angular/core';
-import { webSocket, WebSocketSubject } from "rxjs/webSocket";
+import { webSocket, WebSocketSubject } from 'rxjs/webSocket';
 import { BehaviorSubject, Observable, EMPTY } from 'rxjs';
-import { retry, delay, tap, switchMap, catchError } from 'rxjs/operators';
+import { retry, catchError } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from 'src/environments/environment';
 
@@ -25,12 +25,12 @@ export enum ConnectionStatus {
   providedIn: 'root'
 })
 export class WebSocketService {
-  private subject: WebSocketSubject<any>;
-  private reqCallbacks: object;
-  private responseToCallbacks: object;
+  private subject: WebSocketSubject<any> | null = null;
+  private reqCallbacks: Record<string, (obj: any) => void> = {};
+  private responseToCallbacks: Record<string, (obj: any) => void> = {};
 
   /** Stored connection parameter so reconnections reuse the same identity. */
-  private wsParam: string = null;
+  private wsParam: string | null = null;
 
   /** Whether the disconnect was intentional (no auto-reconnect). */
   private intentionalClose = false;
@@ -46,55 +46,65 @@ export class WebSocketService {
 
   constructor(
     private authService: AuthService
-  ) {
-    this.reqCallbacks = {};
-    this.responseToCallbacks = {};
-  }
+  ) { }
 
   /**
    * Connects to the web socket using the token read from AuthService.token
    * or a guest name for unregistered users.
    * Automatically reconnects with exponential backoff on connection loss.
    */
-  public connect(guestName?: string) {
+  public connect(guestName?: string): void {
     if (this.subject) {
-      if (isDevMode())
+      if (isDevMode()) {
         console.log('Already connected');
+      }
       return;
     }
 
     this.intentionalClose = false;
 
     this.wsParam =
-      (guestName === undefined) ?
-        this.authService.getToken()
-        :
-        'unregistered_' + toBase64Url(guestName);
+      guestName === undefined
+        ? this.authService.getToken()
+        : 'unregistered_' + toBase64Url(guestName);
 
     this.establishConnection();
+  }
+
+  /**
+   * Updates the stored auth token (e.g. when a guest receives a temporary JWT upon joining a room)
+   * so any future reconnection reuses the same authenticated userId.
+   */
+  public setAuthToken(token: string): void {
+    this.wsParam = token;
+    if (this.subject && (this.subject as any)._config) {
+      (this.subject as any)._config.url = environment.wsUrl + token;
+    }
   }
 
   /**
    * Creates the WebSocket connection and sets up the auto-reconnect pipeline.
    */
   private establishConnection(): void {
-    const url = environment.wsUrl + this.wsParam;
+    const url = environment.wsUrl + (this.wsParam || '');
     let currentRetryDelay = WebSocketService.INITIAL_RETRY_DELAY_MS;
 
     this.subject = webSocket({
       url: url,
       openObserver: {
         next: () => {
-          if (isDevMode())
+          if (isDevMode()) {
             console.log('WebSocket connected');
+          }
           currentRetryDelay = WebSocketService.INITIAL_RETRY_DELAY_MS;
           this.connectionStatusSubject.next(ConnectionStatus.Connected);
         }
       },
       closeObserver: {
         next: () => {
-          if (isDevMode())
+          if (isDevMode()) {
             console.log('WebSocket closed');
+          }
           if (!this.intentionalClose) {
             this.connectionStatusSubject.next(ConnectionStatus.Reconnecting);
           }
@@ -104,9 +114,10 @@ export class WebSocketService {
 
     this.subject.pipe(
       retry({
-        delay: (error, retryCount) => {
-          if (isDevMode())
+        delay: (error, _retryCount) => {
+          if (isDevMode()) {
             console.warn('WebSocket error, reconnecting...', error);
+          }
           this.connectionStatusSubject.next(ConnectionStatus.Reconnecting);
 
           if (this.intentionalClose) {
@@ -128,15 +139,13 @@ export class WebSocketService {
       catchError(() => EMPTY)
     ).subscribe(
       msg => {
-        if ('req' in msg) {
-          if (msg.req in this.reqCallbacks) {
-            this.reqCallbacks[msg.req](msg);
-          }
+        if (!msg || typeof msg !== 'object') {
+          return;
         }
-        else if ('responseTo' in msg) {
-          if (msg.responseTo in this.responseToCallbacks) {
-            this.responseToCallbacks[msg.responseTo](msg);
-          }
+        if ('req' in msg && msg.req in this.reqCallbacks) {
+          this.reqCallbacks[msg.req](msg);
+        } else if ('responseTo' in msg && msg.responseTo in this.responseToCallbacks) {
+          this.responseToCallbacks[msg.responseTo](msg);
         }
       }
     );
@@ -158,8 +167,6 @@ export class WebSocketService {
   /**
    * Sets up a callback that will be called when the web sockets receives
    * a specific string in the "req" field.
-   * @param req Value of the "req" field in the incoming object
-   * @param callback Function to be called
    */
   public registerReqCallback(req: string, callback: (obj: any) => void): void {
     this.reqCallbacks[req] = callback;
@@ -168,8 +175,6 @@ export class WebSocketService {
   /**
    * Sets up a callback that will be called when the web sockets receives
    * a specific string in the "responseTo" field.
-   * @param responseTo Value of the "responseTo" field in the incoming object
-   * @param callback Function to be called
    */
   public registerResponseToCallback(responseTo: string, callback: (obj: any) => void): void {
     this.responseToCallbacks[responseTo] = callback;
@@ -177,25 +182,22 @@ export class WebSocketService {
 
   /**
    * Removes a callback that was set up with registerReqCallback.
-   * @param req 
    */
   public removeReqCallback(req: string): void {
     delete this.reqCallbacks[req];
   }
 
   /**
-  * Removes a callback that was set up with registerResponseToCallback.
-  * @param req 
-  */
+   * Removes a callback that was set up with registerResponseToCallback.
+   */
   public removeResponseToCallback(req: string): void {
     delete this.responseToCallbacks[req];
   }
 
   /**
    * Sends a message to the web socket server.
-   * @param msg 
    */
-  public sendMessage(msg): void {
+  public sendMessage(msg: unknown): void {
     if (this.subject) {
       this.subject.next(msg);
     }

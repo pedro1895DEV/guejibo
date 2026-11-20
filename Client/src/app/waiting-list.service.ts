@@ -5,42 +5,50 @@ import { GlobalConstants } from './common/global-constants';
 import { interval, Subscription } from 'rxjs';
 
 interface TableEntry {
-  user: User,
-  position: number,
-  lastSeem: number
+  user: User;
+  waitingUser: WaitingUser;
+  lastSeem: number;
 }
 
 @Injectable({
   providedIn: 'root'
 })
 export class WaitingListService {
-  private outputUsers: WaitingUser[];
-  private waitingTable: { [index: number]: TableEntry }
-  private intervalSub: Subscription;
+  private outputUsers: WaitingUser[] = [];
+  private waitingTable: { [index: number]: TableEntry } = {};
+  private intervalSub: Subscription | null = null;
 
-  constructor() {
-    this.outputUsers = [];
-    this.waitingTable = {};
-  }
+  constructor() { }
 
   /**
    * Sets up the service. Must be called before everything else.
    */
-  initialize() {
+  initialize(): void {
+    this.stopMonitoring();
     this.intervalSub = interval(GlobalConstants.TIMES.CHECK_PLAYERS_ONLINE_INTERVAL)
       .subscribe(() => this.checkOfflineUsers());
-  }  
+  }
+
+  /**
+   * Stops checking player heartbeats (e.g. once the game has ended).
+   */
+  stopMonitoring(): void {
+    if (this.intervalSub) {
+      this.intervalSub.unsubscribe();
+      this.intervalSub = null;
+    }
+  }
 
   /**
    * Marks as offline any user that hasn't sent a message in a while.
    */
-  checkOfflineUsers() {
-    let now = Date.now();
+  checkOfflineUsers(): void {
+    const now = Date.now();
 
-    for (let i in this.waitingTable) {
-      let entry = this.waitingTable[i];
+    for (const i in this.waitingTable) {
+      const entry = this.waitingTable[i];
       if (now - entry.lastSeem > GlobalConstants.TIMES.WAIT_FOR_PLAYER_SHOUT) {
-        this.outputUsers[entry.position].online = false;
+        entry.waitingUser.online = false;
       }
     }
   }
@@ -50,27 +58,21 @@ export class WaitingListService {
    * Adds new users to the user list or marks existing users as online.
    */
   playerIsReady(user: User): void {
-    //updates an existing user
     if (user.id in this.waitingTable) {
       this.waitingTable[user.id].lastSeem = Date.now();
-      this.outputUsers[this.waitingTable[user.id].position].online = true;
-    }
+      this.waitingTable[user.id].waitingUser.online = true;
+    } else {
+      const waitingUser: WaitingUser = {
+        name: user.name,
+        online: true,
+        finished: false,
+        score: 0
+      };
+      this.outputUsers.push(waitingUser);
 
-    //adds a new user
-    else {
-      this.outputUsers.push(
-        {
-          name: user.name,
-          online: true,
-          finished: false,
-          score: 0
-        }
-      );
-
-      this.waitingTable[user.id] =
-      {
+      this.waitingTable[user.id] = {
         user: user,
-        position: this.outputUsers.length - 1,
+        waitingUser: waitingUser,
         lastSeem: Date.now()
       };
     }
@@ -80,23 +82,29 @@ export class WaitingListService {
    * Updates the player score on the list.
    * Called whenever a user score is updated during the game.
    */
-  updateScore(userID: number, score: number, endgame: boolean) {
+  updateScore(userID: number, score: number, endgame: boolean): void {
     if (userID in this.waitingTable) {
-      const user = this.outputUsers[this.waitingTable[userID].position];
+      const user = this.waitingTable[userID].waitingUser;
       user.score = score;
       user.finished = endgame;
-    }    
+    }
   }
 
-  /**  
+  /**
+   * Sorts the player list by descending score for final leaderboard display.
+   * Safe because waitingTable holds direct object references instead of array indices.
+   */
+  sortUsersByScore(): void {
+    this.outputUsers.sort((a, b) => b.score - a.score);
+  }
+
+  /**
    * Should be called when the service is no longer needed.
    */
-  cleanUp() {
-    if (this.intervalSub) {
-      this.intervalSub.unsubscribe();
-    }
+  cleanUp(): void {
+    this.stopMonitoring();
     this.outputUsers = [];
-    this.waitingTable = {};    
+    this.waitingTable = {};
   }
 
   getUsers(): WaitingUser[] {

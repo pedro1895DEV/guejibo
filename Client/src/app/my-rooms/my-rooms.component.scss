@@ -1,0 +1,35 @@
+@use '_colors';
+
+.my-rooms-container {
+    max-width: 800px;
+    margin: 2rem auto;
+    padding: 0 1rem;
+    color: white;
+}
+
+.room-card {
+    border: 1px solid colors.$gameroom-wlist-border;
+    background-color: colors.$gameroom-wlist-back;
+    color: colors.$gameroom-wlist-text;
+    padding: 1rem;
+    margin-bottom: 1rem;
+}
+
+.room-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.code {
+    font-family: monospace;
+    font-weight: bold;
+}
+
+.room-details {
+    margin-top: 1rem;
+    border-top: 1px solid colors.$gameroom-wlist-border;
+    padding-top: 0.75rem;
+}
