@@ -1,20 +1,20 @@
 {
   "name": "iacweb-gameslib",
-  "main": "webpack.config.js",
+  "version": "1.0.0",
+  "main": "dist/gameslib.js",
   "scripts": {
-    "watch": "webpack --config webpack.dev.js --watch",
-    "build": "webpack --config webpack.prod.js"
+    "watch": "node build.mjs --watch",
+    "build": "node build.mjs --prod",
+    "typecheck": "tsc --noEmit",
+    "test": "node --test tests/*.test.mjs"
   },
-  "author": "",
   "license": "ISC",
   "dependencies": {
-    "js-cookie": "^2.2.1",
-    "webpack": "^4.42.1"
+    "js-cookie": "^3.0.5"
   },
   "devDependencies": {
-    "ts-loader": "^6.2.2",
-    "typescript": "^3.8.3",
-    "webpack-cli": "^3.3.11",
-    "webpack-merge": "^4.2.2"
+    "@types/js-cookie": "^3.0.6",
+    "esbuild": "^0.25.0",
+    "typescript": "~5.7.2"
   }
 }
