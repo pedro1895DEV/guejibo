@@ -30,28 +30,28 @@ module.exports = (sequelize, DataTypes) => {
   GameRoom.exportObject = (gr, fulllist = false) => {
     const { Game, User } = sequelize.models;
 
-    let obj = {
+    const obj = {
       id: gr.id,
       code: gr.code,
       timeStarted: gr.timeStarted,
       timeEnded: gr.timeEnded
     };
 
-    if (gr.hasOwnProperty('game')) {
+    if (Object.prototype.hasOwnProperty.call(gr, 'game')) {
       obj.game = Game.exportObject(gr.game);
     }
     else {
       obj.gameId = gr.gameId;
     }
 
-    if (gr.hasOwnProperty('owner')) {
+    if (Object.prototype.hasOwnProperty.call(gr, 'owner')) {
       obj.owner = User.exportObject(gr.owner);
     }
     else {
       obj.ownerId = gr.ownerId;
     }
 
-    if (gr.hasOwnProperty('members')) {
+    if (Object.prototype.hasOwnProperty.call(gr, 'members')) {
       if (fulllist)
         obj.members = gr.members.map(user => User.exportObject(user));
       else

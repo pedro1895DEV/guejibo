@@ -22,16 +22,6 @@ function isValidRegistrationInput(name, email, password) {
 
 module.exports = function (passport) {
 
-  passport.serializeUser((user, done) => {
-    done(null, user.get().id);
-  });
-
-  passport.deserializeUser((id, done) => {
-    User.findOne({ where: { id: id } })
-      .then((user) => done(null, user))
-      .catch((err) => done(err));
-  });
-
   passport.use(
     'local-register',
     new LocalStrategy({

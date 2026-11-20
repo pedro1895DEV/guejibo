@@ -6,15 +6,14 @@ const fs = require('node:fs');
 const path = require('node:path');
 const http = require('node:http');
 const express = require('express');
-const bodyParser = require('body-parser');
 const passport = require('passport');
 const bcrypt = require('bcryptjs');
 const base64url = require('base64url');
 const WebSocket = require('ws');
+const jwt = require('jsonwebtoken');
 
 process.env.NODE_ENV = 'test';
 process.env.JWT_SECRET = 'test-secret-key-for-unit-tests';
-process.env.SESSION_SECRET = 'test-session-secret';
 delete process.env.GOOGLE_CLIENT_ID;
 delete process.env.GOOGLE_CLIENT_SECRET;
 
@@ -23,6 +22,7 @@ const authlogic = require('../app/authlogic');
 const gameroomService = require('../services/gameroom.service');
 const scoreService = require('../services/score.service');
 const gameService = require('../services/game.service');
+const userCleanupService = require('../services/user-cleanup.service');
 
 // Helper to make HTTP JSON requests using Node's built-in http module
 function httpRequest(port, method, reqPath, { body, headers = {} } = {}) {
@@ -55,7 +55,7 @@ test('Sequelize configuration points to config.js and config.json is removed', (
   assert.equal(fs.existsSync(path.join(__dirname, '../sequelize/config/config.json')), false);
 });
 
-test('JWT creation includes iat/exp and verifyJWT rejects expired or tampered tokens', () => {
+test('JWT creation uses jsonwebtoken with iat/exp and verifyJWT rejects expired or tampered tokens', () => {
   const token = authlogic.createJWT({ id: 42, name: 'Alice', email: 'alice@example.com' });
   const decoded = authlogic.verifyJWT(token);
 
@@ -70,13 +70,12 @@ test('JWT creation includes iat/exp and verifyJWT rejects expired or tampered to
   assert.throws(() => authlogic.verifyJWT(token + 'tamper'));
 
   // Expired token must fail
-  const jwtSimple = require('jwt-simple');
-  const expiredToken = jwtSimple.encode(
+  const expiredToken = jwt.sign(
     { id: 42, name: 'Alice', exp: Math.floor(Date.now() / 1000) - 60 },
     authlogic.getJwtSecret(),
-    'HS256'
+    { algorithm: 'HS256' }
   );
-  assert.throws(() => authlogic.verifyJWT(expiredToken), /Token expired/);
+  assert.throws(() => authlogic.verifyJWT(expiredToken), /jwt expired/i);
 });
 
 test('Local login handles OAuth user with null password without crashing', async (t) => {
@@ -87,7 +86,7 @@ test('Local login handles OAuth user with null password without crashing', async
   require('../app/auth')(localPassport);
 
   const app = express();
-  app.use(bodyParser.json());
+  app.use(express.json());
   app.use(localPassport.initialize());
   require('../routes/auth-api')(app, localPassport);
 
@@ -107,7 +106,6 @@ test('Local login handles OAuth user with null password without crashing', async
   const res = await httpRequest(port, 'POST', '/auth/login', {
     body: { email: 'oauth@example.com', password: 'anypassword' }
   });
-  // Passport redirects to /auth/error (302) instead of throwing 500
   assert.equal(res.status, 302);
   assert.equal(res.headers.location, '/auth/error');
 
@@ -147,7 +145,7 @@ test('Main API enforces gameroom authorization and validates game IDs', async (t
   require('../app/auth')(localPassport);
 
   const app = express();
-  app.use(bodyParser.json());
+  app.use(express.json());
   app.use(localPassport.initialize());
   require('../routes/main-api')(app, localPassport);
 
@@ -197,6 +195,19 @@ test('Main API enforces gameroom authorization and validates game IDs', async (t
   });
   assert.equal(missingGame.status, 404);
   assert.equal(missingGame.json.success, false);
+
+  // Temporary guest JWT must be rejected on registered-only endpoints
+  const guestToken = authlogic.createJWT({ id: 500, name: 'Guest_123', temporary: true });
+  const guestCreateRes = await httpRequest(port, 'POST', '/api/gameroom', {
+    headers: { Authorization: 'Bearer ' + guestToken },
+    body: { gameid: 1 }
+  });
+  assert.equal(guestCreateRes.status, 403);
+
+  const guestMyRoomsRes = await httpRequest(port, 'GET', '/api/mygamerooms', {
+    headers: { Authorization: 'Bearer ' + guestToken }
+  });
+  assert.equal(guestMyRoomsRes.status, 403);
 });
 
 test('WebSocket enforces ownership on start-game/end-game, membership on update-score, and UTF-8 guest names', async (t) => {
@@ -348,7 +359,33 @@ test('WebSocket enforces ownership on start-game/end-game, membership on update-
   playerWs.close();
 });
 
-test('Server index boots cleanly with trust proxy and security headers', async (t) => {
+test('Server index boots cleanly with trust proxy, security headers, /health, and FK-safe temporary user cleanup', async (t) => {
+  const origAuth = models.sequelize.authenticate;
+  const origUserFindAll = models.User.findAll;
+  const origUgrFindAll = models.UsersGameRooms.findAll;
+  const origGrFindAll = models.GameRoom.findAll;
+  const origDestroy = models.User.destroy;
+  t.after(() => {
+    models.sequelize.authenticate = origAuth;
+    models.User.findAll = origUserFindAll;
+    models.UsersGameRooms.findAll = origUgrFindAll;
+    models.GameRoom.findAll = origGrFindAll;
+    models.User.destroy = origDestroy;
+  });
+
+  models.sequelize.authenticate = async () => {};
+  // Guests 101 (in UsersGameRooms), 102 (room owner), 103 & 104 (orphans)
+  models.User.findAll = async () => [{ id: 101 }, { id: 102 }, { id: 103 }, { id: 104 }];
+  models.UsersGameRooms.findAll = async () => [{ userId: 101 }];
+  models.GameRoom.findAll = async () => [{ ownerId: 102 }];
+
+  let destroyedIds = null;
+  models.User.destroy = async ({ where }) => {
+    const sym = Object.getOwnPropertySymbols(where.id)[0];
+    destroyedIds = where.id[sym];
+    return destroyedIds.length;
+  };
+
   const { app } = require('../index');
   assert.equal(app.get('trust proxy'), 1);
   assert.equal(app.get('x-powered-by'), false);
@@ -356,12 +393,26 @@ test('Server index boots cleanly with trust proxy and security headers', async (
   const server = http.createServer(app);
   await new Promise(resolve => server.listen(0, '127.0.0.1', resolve));
   t.after(() => new Promise(resolve => server.close(resolve)));
+  const port = server.address().port;
 
-  const res = await httpRequest(server.address().port, 'GET', '/auth/error');
+  const res = await httpRequest(port, 'GET', '/auth/error');
   assert.equal(res.status, 200);
   assert.equal(res.headers['x-content-type-options'], 'nosniff');
   assert.equal(res.headers['x-frame-options'], 'SAMEORIGIN');
   assert.equal(res.headers['referrer-policy'], 'strict-origin-when-cross-origin');
   assert.equal(res.headers['x-powered-by'], undefined);
   assert.equal(res.json.success, false);
+
+  const healthOk = await httpRequest(port, 'GET', '/health');
+  assert.equal(healthOk.status, 200);
+  assert.equal(healthOk.json.status, 'ok');
+
+  models.sequelize.authenticate = async () => { throw new Error('DB down'); };
+  const healthFail = await httpRequest(port, 'GET', '/health');
+  assert.equal(healthFail.status, 503);
+  assert.equal(healthFail.json.status, 'unhealthy');
+
+  const deleted = await userCleanupService.cleanupStaleTemporaryUsers(1000);
+  assert.equal(deleted, 2);
+  assert.deepEqual(destroyedIds, [103, 104]);
 });

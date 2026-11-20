@@ -53,7 +53,7 @@ module.exports = function (app, passport) {
   const authRateLimit = createRateLimiter(15 * 60 * 1000, 30);
 
   /*
-   * Google OAuth 2.0 configurations (optional when env vars are unset in dev).
+   * Google OAuth 2.0 configurations (stateless JWT, optional when env vars are unset in dev).
    */
   const hasGoogleOAuth = Boolean(process.env.GOOGLE_CLIENT_ID && process.env.GOOGLE_CLIENT_SECRET);
   if (hasGoogleOAuth) {
@@ -81,11 +81,11 @@ module.exports = function (app, passport) {
     ));
 
     app.get('/auth/google',
-      passport.authenticate('google', { scope: ['profile', 'email'] })
+      passport.authenticate('google', { scope: ['profile', 'email'], session: false })
     );
 
     app.get('/auth/google/callback',
-      passport.authenticate('google', { failureRedirect: CLIENT_URL + '/login' }),
+      passport.authenticate('google', { session: false, failureRedirect: CLIENT_URL + '/login' }),
       function (req, res) {
         const user = req.user.get();
         const token = authlogic.createJWT({ id: user.id, name: user.name, email: user.email });

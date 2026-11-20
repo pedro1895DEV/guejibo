@@ -32,7 +32,7 @@ module.exports = (sequelize, DataTypes) => {
   };
 
   User.exportObject = (user, includeEmail = false) => {
-    let obj = {
+    const obj = {
       id: user.id,
       name: user.name
     };

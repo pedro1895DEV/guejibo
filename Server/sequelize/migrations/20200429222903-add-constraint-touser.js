@@ -19,7 +19,7 @@ module.exports = {
     ]);
   },
 
-  down: (queryInterface, Sequelize) => {
+  down: (queryInterface, _Sequelize) => {
     return Promise.all([
       queryInterface.removeConstraint('User', 'unique_email'),
       queryInterface.removeColumn('User', 'googleId')

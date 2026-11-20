@@ -2,17 +2,19 @@
 
 const express = require('express');
 const cookieParser = require('cookie-parser');
-const bodyParser = require('body-parser');
 const passport = require('passport');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const http = require('http');
-const session = require('express-session');
 
 /* ***************************************** */
 
 // dotenv must be loaded before reading env vars
 dotenv.config();
+
+const models = require('./sequelize/models');
+const logger = require('./app/logger');
+const userCleanupService = require('./services/user-cleanup.service');
 
 const app = express();
 const port = process.env.PORT || 3000;
@@ -20,15 +22,12 @@ const isProduction = process.env.NODE_ENV === 'production';
 
 /* ***************************************** */
 
-// Fail-fast: critical secrets must be explicitly set in production
+// Fail-fast: JWT_SECRET must be explicitly set in production
 if (!process.env.JWT_SECRET && isProduction) {
   throw new Error('JWT_SECRET env var is required in production');
 }
-if (!process.env.SESSION_SECRET && isProduction) {
-  throw new Error('SESSION_SECRET env var is required in production');
-}
 
-// Trust reverse proxy (Apache) so secure cookies & client IP work behind TLS termination
+// Trust reverse proxy (Apache) so client IP and HTTPS headers work behind TLS termination
 app.set('trust proxy', 1);
 app.disable('x-powered-by');
 
@@ -49,27 +48,23 @@ app.use(cors({
   credentials: true
 }));
 
-// cookie-parser
+// cookie-parser & JSON body parser
 app.use(cookieParser());
+app.use(express.json());
 
-// body-parser
-app.use(bodyParser.json());
-
-// express-session
-app.use(session({
-  secret: process.env.SESSION_SECRET || 'dev-only-insecure-secret',
-  resave: false,
-  saveUninitialized: false,
-  cookie: {
-    secure: isProduction,
-    httpOnly: true,
-    sameSite: 'lax'
-  }
-}));
-
-// passport
+// passport (100% stateless JWT authentication — no server-side session store)
 app.use(passport.initialize());
-app.use(passport.session());
+
+// Healthcheck endpoint for Docker Compose and load balancers
+app.get('/health', async (_req, res) => {
+  try {
+    await models.sequelize.authenticate();
+    res.status(200).send({ status: 'ok' });
+  } catch (err) {
+    logger.error('Database healthcheck failed', err);
+    res.status(503).send({ status: 'unhealthy', error: 'Database connection failed' });
+  }
+});
 
 /* ***************************************** */
 
@@ -84,10 +79,12 @@ const httpServer = http.createServer(app);
 // Initialize web socket server
 require('./app/ws')(app, httpServer, passport);
 
-// Initialize HTTP server only when executed directly
+// Initialize HTTP server and background cleanup only when executed directly
 if (require.main === module) {
-  httpServer.listen(port);
-  console.log('Port: ' + port);
+  userCleanupService.startPeriodicCleanup();
+  httpServer.listen(port, () => {
+    logger.info('Guejibo server listening', { port });
+  });
 }
 
 module.exports = { app, httpServer };

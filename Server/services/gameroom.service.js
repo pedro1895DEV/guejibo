@@ -28,33 +28,6 @@ module.exports = {
     };
   },
 
-  async createForGuest(gameId) {
-    const game = await Game.findOne({ where: { id: gameId } });
-    if (!game) {
-      return null;
-    }
-
-    const guestUser = await User.create({
-      name: gamelogic.createRandomUserName(),
-      temporary: true
-    });
-
-    const gr = await GameRoom.create({
-      gameId: game.id,
-      ownerId: guestUser.id,
-      timeStarted: null,
-      timeEnded: null,
-      code: gamelogic.createGameRoomCode()
-    });
-
-    return {
-      id: gr.id,
-      game: Game.exportObject(game),
-      code: gr.code,
-      guestUser
-    };
-  },
-
   async findByOwner(ownerId) {
     const rooms = await GameRoom.findAll({
       where: { ownerId },

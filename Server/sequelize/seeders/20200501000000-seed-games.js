@@ -1,15 +1,22 @@
 'use strict';
 
 module.exports = {
-  async up(queryInterface, Sequelize) {
+  async up(queryInterface, _Sequelize) {
+    const isProduction = process.env.NODE_ENV === 'production';
+
     const games = [
       { name: 'Binary Wars',       basePath: 'binwars',          createdAt: new Date(), updatedAt: new Date() },
       { name: 'Code Clicker',      basePath: 'codeclicker',      createdAt: new Date(), updatedAt: new Date() },
       { name: 'English Stop',      basePath: 'english_stop',     createdAt: new Date(), updatedAt: new Date() },
       { name: 'Shoot The Answer',  basePath: 'shoot-the-answer', createdAt: new Date(), updatedAt: new Date() },
-      { name: 'Torne Verdadeiro',  basePath: 'torne-verdadeiro', createdAt: new Date(), updatedAt: new Date() },
-      { name: 'Stub Game',         basePath: 'stub',             createdAt: new Date(), updatedAt: new Date() }
+      { name: 'Torne Verdadeiro',  basePath: 'torne-verdadeiro', createdAt: new Date(), updatedAt: new Date() }
     ];
+
+    if (!isProduction) {
+      games.push({ name: 'Stub Game', basePath: 'stub', createdAt: new Date(), updatedAt: new Date() });
+    } else {
+      await queryInterface.bulkDelete('Game', { basePath: 'stub' });
+    }
 
     for (const game of games) {
       const existing = await queryInterface.rawSelect('Game', {
@@ -22,7 +29,7 @@ module.exports = {
     }
   },
 
-  async down(queryInterface, Sequelize) {
+  async down(queryInterface, _Sequelize) {
     await queryInterface.bulkDelete('Game', {
       basePath: [
         'binwars',

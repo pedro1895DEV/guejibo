@@ -5,6 +5,7 @@ const base64url = require('base64url');
 const models = require('../sequelize/models');
 const gamelogic = require('../app/gamelogic');
 const authlogic = require('../app/authlogic');
+const logger = require('../app/logger');
 const gameroomService = require('../services/gameroom.service');
 const scoreService = require('../services/score.service');
 
@@ -54,7 +55,7 @@ module.exports = function (app, httpServer, _passport) {
           let decoded;
           try {
             decoded = authlogic.verifyJWT(token);
-          } catch (e) {
+          } catch (_e) {
             done(false);
             return;
           }
@@ -75,7 +76,7 @@ module.exports = function (app, httpServer, _passport) {
         info.req.authenticatedUser = authenticatedUser;
         done(true);
       } catch (e) {
-        console.error('WS verifyClient error:', e.message);
+        logger.error('WS verifyClient error', e);
         done(false);
       }
     }
@@ -124,14 +125,14 @@ module.exports = function (app, httpServer, _passport) {
 
     // Handle errors without crashing the process
     ws.on('error', (err) => {
-      console.error(`WebSocket error for user ${userId}:`, err.message);
+      logger.error(`WebSocket error for user ${userId}`, err);
       ws.terminate();
     });
 
     ws.on('message', message => {
       let data;
       try {
-        data = JSON.parse(message);
+        data = JSON.parse(message.toString());
 
         if (!data || !data.action) {
           ws.send('Error: missing action field');
@@ -165,7 +166,7 @@ module.exports = function (app, httpServer, _passport) {
             ws.send(`Error: invalid action "${data.action}"`);
             return;
         }
-      } catch (e) {
+      } catch (_e) {
         ws.send('Error: invalid data');
       }
     });
@@ -173,6 +174,7 @@ module.exports = function (app, httpServer, _passport) {
 
   /*
    * 'join' -> Joining a game, given code.
+   * Returns a signed JWT so temporary guest users reuse the same userId across reconnects.
    */
   async function doActionJoin(ws, code) {
     try {
@@ -201,10 +203,11 @@ module.exports = function (app, httpServer, _passport) {
       ws.send(JSON.stringify({
         responseTo: 'join',
         success: true,
-        gameroom: GameRoom.exportObject(gr, true)
+        gameroom: GameRoom.exportObject(gr, true),
+        token: authlogic.createJWT(ws.user)
       }));
     } catch (e) {
-      console.error('WS doActionJoin error:', e.message);
+      logger.error('WS doActionJoin error', e);
       ws.send(JSON.stringify({
         responseTo: 'join',
         success: false,
@@ -237,7 +240,7 @@ module.exports = function (app, httpServer, _passport) {
         sendToUser(id, payload);
       }
     } catch (e) {
-      console.error('WS doActionImReady error:', e.message);
+      logger.error('WS doActionImReady error', e);
     }
   }
 
@@ -273,7 +276,7 @@ module.exports = function (app, httpServer, _passport) {
         });
       }
     } catch (e) {
-      console.error('WS doActionStartGame error:', e.message);
+      logger.error('WS doActionStartGame error', e);
     }
   }
 
@@ -322,7 +325,7 @@ module.exports = function (app, httpServer, _passport) {
         }
       }
     } catch (e) {
-      console.error('WS doActionUpdateScore error:', e.message);
+      logger.error('WS doActionUpdateScore error', e);
     }
   }
 
@@ -346,7 +349,7 @@ module.exports = function (app, httpServer, _passport) {
       await scoreService.endAllPlayers(data.gameroom);
       await wrapUpGameRoom(gr);
     } catch (e) {
-      console.error('WS doActionEndGame error:', e.message);
+      logger.error('WS doActionEndGame error', e);
     }
   }
 
@@ -364,7 +367,7 @@ module.exports = function (app, httpServer, _passport) {
         endTime: gr.timeEnded
       });
     } catch (e) {
-      console.error('WS wrapUpGameRoom error:', e.message);
+      logger.error('WS wrapUpGameRoom error', e);
     }
   }
 

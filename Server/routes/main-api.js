@@ -4,7 +4,6 @@ const express = require('express');
 const path = require('path');
 const gameService = require('../services/game.service');
 const gameroomService = require('../services/gameroom.service');
-const authlogic = require('../app/authlogic');
 
 function parsePositiveInt(value) {
   const num = Number(value);
@@ -16,11 +15,11 @@ module.exports = function (app, passport) {
   /*
    * Returns a list of all available games.
    */
-  app.get('/api/games', async (req, res) => {
+  app.get('/api/games', async (_req, res) => {
     try {
       const games = await gameService.findAll();
       res.send(games);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).send({ success: false, error: 'Failed to fetch games' });
     }
   });
@@ -38,15 +37,15 @@ module.exports = function (app, passport) {
       const game = await gameService.findById(gameId);
       if (!game) return res.status(404).send({ success: false, error: 'Game not found' });
       res.send(game);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).send({ success: false, error: 'Failed to fetch game' });
     }
   });
 
   /*
-   * Creates a new game room with current user as the owner.
+   * Creates a new game room with current authenticated registered user as the owner.
    */
-  app.post('/api/gameroom', isLoggedIn(), async (req, res) => {
+  app.post('/api/gameroom', isLoggedIn(), requireRegisteredUser, async (req, res) => {
     const gameId = parsePositiveInt(req.body && req.body.gameid);
     if (!gameId) {
       return res.status(400).send({ success: false, error: 'Invalid gameid' });
@@ -58,45 +57,19 @@ module.exports = function (app, passport) {
         return res.status(404).send({ success: false, error: 'Game not found' });
       }
       res.send({ success: true, ...result });
-    } catch (error) {
+    } catch (_error) {
       res.status(500).send({ success: false, error: 'Failed to create game room' });
     }
   });
 
   /*
-   * Creates a new game room with a new unregistered user as the owner.
+   * Returns a list of all game rooms owned by current registered user.
    */
-  app.post('/api/guest/gameroom/', async (req, res) => {
-    const gameId = parsePositiveInt(req.body && req.body.gameid);
-    if (!gameId) {
-      return res.status(400).send({ success: false, error: 'Invalid gameid' });
-    }
-
-    try {
-      const result = await gameroomService.createForGuest(gameId);
-      if (!result) {
-        return res.status(404).send({ success: false, error: 'Game not found' });
-      }
-      res.send({
-        success: true,
-        id: result.id,
-        game: result.game,
-        code: result.code,
-        token: authlogic.createJWT(result.guestUser)
-      });
-    } catch (error) {
-      res.status(500).send({ success: false, error: 'Failed to create guest game room' });
-    }
-  });
-
-  /*
-   * Returns a list of all game rooms owned by current user.
-   */
-  app.get('/api/mygamerooms', isLoggedIn(), async (req, res) => {
+  app.get('/api/mygamerooms', isLoggedIn(), requireRegisteredUser, async (req, res) => {
     try {
       const rooms = await gameroomService.findByOwner(req.user.id);
       res.send(rooms);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).send({ success: false, error: 'Failed to fetch game rooms' });
     }
   });
@@ -122,7 +95,7 @@ module.exports = function (app, passport) {
       }
 
       res.send(room);
-    } catch (error) {
+    } catch (_error) {
       res.status(500).send({ success: false, error: 'Failed to fetch game room' });
     }
   });
@@ -143,11 +116,18 @@ module.exports = function (app, passport) {
 
   app.use('/GamesLib', express.static(path.join(__dirname, '../../GamesLib')));
 
-  app.get('/*', (req, res) => {
+  app.get('/*', (_req, res) => {
     res.sendFile('client/index.html', { root: path.join(__dirname, '..') });
   });
 
   function isLoggedIn() {
     return passport.authenticate('local-jwt', { session: false });
+  }
+
+  function requireRegisteredUser(req, res, next) {
+    if (req.user && req.user.temporary) {
+      return res.status(403).send({ success: false, error: 'Registered account required' });
+    }
+    return next();
   }
 };

@@ -1,6 +1,6 @@
 'use strict';
 
-const jwt = require('jwt-simple');
+const jwt = require('jsonwebtoken');
 const models = require('../sequelize/models');
 const User = models.User;
 
@@ -30,21 +30,25 @@ module.exports = {
 
   /*
    * Creates a signed HS256 JWT with expiration for given User object.
+   * Preserves the `temporary` flag so guest tokens cannot access registered-only endpoints.
    */
   createJWT: function (obj) {
-    const now = Math.floor(Date.now() / 1000);
     const payload = {
       ...User.exportObject(obj, true),
-      iat: now,
-      exp: now + getJwtTtlSeconds()
+      temporary: Boolean(obj && obj.temporary)
     };
-    return jwt.encode(payload, getJwtSecret(), 'HS256');
+    return jwt.sign(payload, getJwtSecret(), {
+      algorithm: 'HS256',
+      expiresIn: getJwtTtlSeconds()
+    });
   },
 
   /*
    * Verifies signature (pinned to HS256) and expiration of a JWT.
    */
   verifyJWT: function (token) {
-    return jwt.decode(token, getJwtSecret(), false, 'HS256');
+    return jwt.verify(token, getJwtSecret(), {
+      algorithms: ['HS256']
+    });
   }
 };
