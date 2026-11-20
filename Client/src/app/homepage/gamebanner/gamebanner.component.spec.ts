@@ -1,4 +1,6 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { GamebannerComponent } from './gamebanner.component';
 
@@ -6,9 +8,10 @@ describe('GamebannerComponent', () => {
   let component: GamebannerComponent;
   let fixture: ComponentFixture<GamebannerComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-    imports: [GamebannerComponent]
+    providers: [provideHttpClient(), provideRouter([])],
+      imports: [GamebannerComponent]
 })
     .compileComponents();
   }));
@@ -16,6 +19,7 @@ describe('GamebannerComponent', () => {
   beforeEach(() => {
     fixture = TestBed.createComponent(GamebannerComponent);
     component = fixture.componentInstance;
+    component.game = { id: 1, name: 'Test Game', path: 'stub' };
     fixture.detectChanges();
   });
 

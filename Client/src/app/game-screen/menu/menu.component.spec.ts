@@ -1,4 +1,6 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { MenuComponent } from './menu.component';
 
@@ -6,9 +8,10 @@ describe('MenuComponent', () => {
   let component: MenuComponent;
   let fixture: ComponentFixture<MenuComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-    imports: [MenuComponent]
+    providers: [provideHttpClient(), provideRouter([])],
+      imports: [MenuComponent]
 })
     .compileComponents();
   }));
@@ -16,6 +19,7 @@ describe('MenuComponent', () => {
   beforeEach(() => {
     fixture = TestBed.createComponent(MenuComponent);
     component = fixture.componentInstance;
+    component.game = { id: 1, name: 'Test Game', path: 'stub' };
     fixture.detectChanges();
   });
 

@@ -18,8 +18,8 @@ import { WaitingListComponent } from '../../new-room/waiting-list/waiting-list.c
 })
 export class JoinScreenComponent implements OnInit, OnDestroy {
 
-  public code: string;
-  public name: string = null;
+  public code: string = '';
+  public name: string = '';
   public joined = false;
 
   private gameRoomId: number;
@@ -41,7 +41,7 @@ export class JoinScreenComponent implements OnInit, OnDestroy {
     if(this.authService.isLoggedIn())
       wss.connect();
     else
-      wss.connect(this.name);
+      wss.connect((this.name || '').trim());
 
     // When successfully joined, change interface to waiting list and
     // start sending "im-ready" messsages

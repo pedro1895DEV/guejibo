@@ -1,15 +1,14 @@
-import { TestBed, async } from '@angular/core/testing';
-import { RouterTestingModule } from '@angular/router/testing';
+import { TestBed, waitForAsync } from '@angular/core/testing';
+import { provideRouter } from '@angular/router';
+import { provideHttpClient } from '@angular/common/http';
 import { AppComponent } from './app.component';
 
 describe('AppComponent', () => {
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-    imports: [
-        RouterTestingModule,
-        AppComponent
-    ],
-}).compileComponents();
+      imports: [AppComponent],
+      providers: [provideRouter([]), provideHttpClient()]
+    }).compileComponents();
   }));
 
   it('should create the app', () => {
@@ -24,10 +23,11 @@ describe('AppComponent', () => {
     expect(app.title).toEqual('Client');
   });
 
-  it('should render title', () => {
+  it('should render topbar and router outlet', () => {
     const fixture = TestBed.createComponent(AppComponent);
     fixture.detectChanges();
-    const compiled = fixture.nativeElement;
-    expect(compiled.querySelector('.content span').textContent).toContain('Client app is running!');
+    const compiled = fixture.nativeElement as HTMLElement;
+    expect(compiled.querySelector('app-topbar')).toBeTruthy();
+    expect(compiled.querySelector('router-outlet')).toBeTruthy();
   });
 });

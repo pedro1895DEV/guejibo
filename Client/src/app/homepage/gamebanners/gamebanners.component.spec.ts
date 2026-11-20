@@ -1,4 +1,6 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { GamebannersComponent } from './gamebanners.component';
 
@@ -6,9 +8,10 @@ describe('GamebannersComponent', () => {
   let component: GamebannersComponent;
   let fixture: ComponentFixture<GamebannersComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-    imports: [GamebannersComponent]
+    providers: [provideHttpClient(), provideRouter([])],
+      imports: [GamebannersComponent]
 })
     .compileComponents();
   }));

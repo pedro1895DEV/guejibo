@@ -1,5 +1,5 @@
 const isBrowser = typeof window !== 'undefined';
-const host = isBrowser ? window.location.hostname : 'localhost';
+const host = isBrowser ? window.location.host : 'localhost';
 const isHttps = isBrowser && window.location.protocol === 'https:';
 
 export const environment = {

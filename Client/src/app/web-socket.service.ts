@@ -5,8 +5,13 @@ import { retry, delay, tap, switchMap, catchError } from 'rxjs/operators';
 import { AuthService } from './auth.service';
 import { environment } from 'src/environments/environment';
 
-function toBase64Url(str: string): string {
-  return btoa(str).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
+export function toBase64Url(str: string): string {
+  const bytes = new TextEncoder().encode(str || '');
+  let binary = '';
+  for (let i = 0; i < bytes.length; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
 }
 
 /** Possible states of the WebSocket connection. */
@@ -191,7 +196,9 @@ export class WebSocketService {
    * @param msg 
    */
   public sendMessage(msg): void {
-    this.subject.next(msg);
+    if (this.subject) {
+      this.subject.next(msg);
+    }
   }
 
 }

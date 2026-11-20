@@ -38,7 +38,11 @@ export class GameMetadataService {
   }
 
   public getScreenshotUrl(game: Game): string {
-    return GamesService.getGameUrl(game) + 'meta/screenshot.jpg'
+    return GamesService.getGameUrl(game) + 'meta/screenshot.jpg';
+  }
+
+  public getScreenshotFallbackUrl(game: Game): string {
+    return GamesService.getGameUrl(game) + 'meta/screenshot.png';
   }
 
   getLogoUrl(game: Game) {

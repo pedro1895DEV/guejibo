@@ -18,6 +18,12 @@ export class ScreenshotComponent implements OnInit {
   ngOnInit(): void {
   }
 
+  public screenshotBackground(): string {
+    const primary = this.gameMetadataService.getScreenshotUrl(this.game);
+    const fallback = this.gameMetadataService.getScreenshotFallbackUrl(this.game);
+    return `url(${primary}), url(${fallback})`;
+  }
+
   public screenshotUrl() {
     return this.gameMetadataService.getScreenshotUrl(this.game);
   }

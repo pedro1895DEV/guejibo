@@ -174,7 +174,9 @@ export class GameConnection {
      * Loads up the page that will allow the user to complete the registration.
      */
     public loadJoinPage() {
-        Cookies.set('tmpuser', JSON.stringify(this.endGameData.user), { path: '/' });
+        if (this.endGameData && this.endGameData.user) {
+            Cookies.set('tmpuser', JSON.stringify(this.endGameData.user), { path: '/' });
+        }
         window.open('../../register', '_self');
     }
 
@@ -214,7 +216,7 @@ function onmessage(ev: MessageEvent) {
         data = JSON.parse(ev.data);
     }
     catch (e) {
-        this.showParsingError(ev.data);
+        showParsingError(ev.data);
         return;
     }
 
@@ -242,7 +244,10 @@ function onmessage(ev: MessageEvent) {
             (<GameConnection.MyWebSocket>this).gameConnection.setEndGameData(endGameData);
 
             //Calls the callback
-            (<GameConnection.MyWebSocket>this).gameConnection.getEndGameCallback()(endGameData);
+            const endGameCallback = (<GameConnection.MyWebSocket>this).gameConnection.getEndGameCallback();
+            if (endGameCallback) {
+                endGameCallback(endGameData);
+            }
 
             break;
 

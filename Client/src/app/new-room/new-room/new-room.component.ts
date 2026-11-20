@@ -1,6 +1,7 @@
 import { Component, OnInit, OnDestroy, isDevMode } from '@angular/core';
 import { GamesService, GameRoom } from 'src/app/games.service';
-import { Observable } from 'rxjs';
+import { Subscription } from 'rxjs';
+import { switchMap } from 'rxjs/operators';
 import { ActivatedRoute } from '@angular/router';
 import { AuthService } from 'src/app/auth.service';
 import { WebSocketService } from 'src/app/web-socket.service';
@@ -17,8 +18,11 @@ import { WaitingListComponent } from '../waiting-list/waiting-list.component';
 })
 export class NewRoomComponent implements OnInit, OnDestroy {
 
-  private gameRoom$: Observable<GameRoom>;
+  private roomSub: Subscription | null = null;
   public gameRoom: GameRoom;
+  public readonly joinUrl: string = typeof window !== 'undefined'
+    ? `${window.location.origin}/join`
+    : '/join';
 
   constructor(
     private route: ActivatedRoute,
@@ -29,44 +33,44 @@ export class NewRoomComponent implements OnInit, OnDestroy {
   ) { }
 
   ngOnInit(): void {
-
     this.waitingListService.initialize();
 
-    this.route.paramMap.subscribe(
-      paramMap => {
-        const gameid = Number(paramMap.get('gameid'));
-        this.gameRoom$ = this.gameService.getNewGameRoom(gameid);
-        this.gameRoom$.subscribe({
-          next: (gr: GameRoom) => {
-            this.gameRoom = gr;
+    this.roomSub = this.route.paramMap.pipe(
+      switchMap(paramMap => this.gameService.getNewGameRoom(Number(paramMap.get('gameid'))))
+    ).subscribe({
+      next: (gr: GameRoom) => {
+        this.gameRoom = gr;
 
-            if (!gr.success) {
-              if(isDevMode())
-                console.log("Server error when creating game room");
-              return;
-            }
-
-            if('token' in gr)
-              this.authService.setupUserWithToken(gr.token);
-              
-            this.webSocketService.connect();
-            this.webSocketService.registerReqCallback(
-              'player-is-ready',
-              msg => { this.waitingListService.playerIsReady(msg.user); }
-            );
+        if (!gr.success) {
+          if (isDevMode()) {
+            console.log('Server error when creating game room');
           }
-        });
+          return;
+        }
+
+        if ('token' in gr && gr.token) {
+          this.authService.setupUserWithToken(gr.token);
+        }
+
+        this.webSocketService.connect();
+        this.webSocketService.registerReqCallback(
+          'player-is-ready',
+          msg => { this.waitingListService.playerIsReady(msg.user); }
+        );
       }
-    );
+    });
   }
 
   ngOnDestroy(): void {
+    if (this.roomSub) {
+      this.roomSub.unsubscribe();
+    }
     this.webSocketService.removeReqCallback('player-is-ready');
     this.webSocketService.removeReqCallback('update-score');
     this.waitingListService.cleanUp();
   }
 
-  gameStart() {
+  gameStart(): void {
     this.webSocketService.registerReqCallback(
       'update-score',
       msg => { this.waitingListService.updateScore(msg.user, msg.score, msg.endgame); }
@@ -74,11 +78,10 @@ export class NewRoomComponent implements OnInit, OnDestroy {
 
     this.webSocketService.sendMessage(
       {
-          action: "start-game",
-          gameroom: this.gameRoom.id
+        action: 'start-game',
+        gameroom: this.gameRoom.id
       }
     );
   }
 
 }
-

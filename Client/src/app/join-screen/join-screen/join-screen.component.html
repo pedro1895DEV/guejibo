@@ -1,6 +1,7 @@
 <form
     #joinForm="ngForm"
     *ngIf="!joined"
+    (ngSubmit)="join()"
 >
     <p>Código da sala:</p>
     <input
@@ -28,7 +29,8 @@
     </div>
 
     <button
-        (click)="join()"
+        type="submit"
+        [disabled]="joinForm.invalid"
         class="bigbutton"
     >
         Entrar

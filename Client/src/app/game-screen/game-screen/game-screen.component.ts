@@ -2,7 +2,7 @@ import { Component, OnInit } from '@angular/core';
 import { ActivatedRoute } from '@angular/router';
 import { GamesService, Game } from 'src/app/games.service';
 import { Observable } from 'rxjs';
-import { switchMap } from 'rxjs/operators';
+import { switchMap, shareReplay } from 'rxjs/operators';
 import { GameMetadataService } from 'src/app/game-metadata.service';
 import { NgIf, AsyncPipe } from '@angular/common';
 import { GameTitleComponent } from '../game-title/game-title.component';
@@ -28,7 +28,8 @@ export class GameScreenComponent implements OnInit {
 
   ngOnInit(): void {
     this.game$ = this.route.paramMap.pipe(
-      switchMap(paramMap => this.gameService.getGame(Number(paramMap.get('id'))))
+      switchMap(paramMap => this.gameService.getGame(Number(paramMap.get('id')))),
+      shareReplay(1)
     );
 
     this.description$ = this.game$.pipe(

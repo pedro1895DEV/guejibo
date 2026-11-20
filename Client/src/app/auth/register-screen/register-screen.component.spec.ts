@@ -1,4 +1,6 @@
-import { async, ComponentFixture, TestBed } from '@angular/core/testing';
+import { provideHttpClient } from '@angular/common/http';
+import { provideRouter } from '@angular/router';
+import { waitForAsync, ComponentFixture, TestBed } from '@angular/core/testing';
 
 import { RegisterScreenComponent } from './register-screen.component';
 
@@ -6,9 +8,10 @@ describe('RegisterScreenComponent', () => {
   let component: RegisterScreenComponent;
   let fixture: ComponentFixture<RegisterScreenComponent>;
 
-  beforeEach(async(() => {
+  beforeEach(waitForAsync(() => {
     TestBed.configureTestingModule({
-    imports: [RegisterScreenComponent]
+    providers: [provideHttpClient(), provideRouter([])],
+      imports: [RegisterScreenComponent]
 })
     .compileComponents();
   }));
